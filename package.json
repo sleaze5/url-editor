@@ -1,0 +1,55 @@
+{
+	"name": "url-editor",
+	"private": true,
+	"version": "1.0.0",
+	"description": "A simple browser extension to parse and edit the current page's URL.",
+	"homepage": "https://github.com/sleaze5/url-editor",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sleaze5/url-editor.git"
+	},
+	"bugs": {
+		"url": "https://github.com/sleaze5/url-editor/issues"
+	},
+	"author": {
+		"name": "sleaze5",
+		"displayName": "sleaze",
+		"url": "https://github.com/sleaze5"
+	},
+	"license": "MIT",
+	"type": "module",
+	"engines": {
+		"bun": ">=1.3.0"
+	},
+	"scripts": {
+		"dev:chrome": "BROWSER=chrome bun --bun vite build --watch --mode development",
+		"dev:firefox": "BROWSER=firefox bun --bun vite build --watch --mode development",
+		"dev:ui": "bun --bun vite",
+		"build": "bun run build:chrome && bun run build:firefox",
+		"build:chrome": "BROWSER=chrome bun --bun vite build --mode production",
+		"build:firefox": "BROWSER=firefox bun --bun vite build --mode production",
+		"check": "bun --bun svelte-check --tsconfig ./tsconfig.json --fail-on-warnings --tsgo",
+		"lint": "bun --bun oxlint --type-aware --deny-warnings .",
+		"lint:fix": "bun --bun oxlint --type-aware --fix --deny-warnings .",
+		"format": "bun --bun oxfmt --write .",
+		"format:check": "bun --bun oxfmt --check .",
+		"validate": "bun run format && bun run lint:fix && bun run check && bun run build"
+	},
+	"devDependencies": {
+		"@sveltejs/vite-plugin-svelte": "^7.3.1",
+		"@types/bun": "^1.3.14",
+		"@types/chrome": "^0.3.4",
+		"@typescript/native": "npm:typescript@7.0.2",
+		"oxc-minify": "^0.152.0",
+		"oxfmt": "^0.71.0",
+		"oxlint": "^1.86.0",
+		"oxlint-tsgolint": "^7.0.2003",
+		"svelte": "^5.57.1",
+		"svelte-check": "^4.7.6",
+		"typescript": "6.0.3",
+		"vite": "^8.3.1"
+	},
+	"dependencies": {
+		"@lucide/svelte": "^1.48.0"
+	}
+}

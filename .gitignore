@@ -1,0 +1,8 @@
+node_modules
+dist
+.svelte-check
+*.tsbuildinfo
+*.log
+.env*
+.DS_Store
+.idea
