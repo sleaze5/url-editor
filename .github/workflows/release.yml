@@ -1,0 +1,77 @@
+name: Release
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+concurrency:
+    group: release
+    cancel-in-progress: false
+
+jobs:
+    release:
+        runs-on: ubuntu-slim
+        timeout-minutes: 10
+        env:
+            GH_TOKEN: ${{ github.token }}
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  fetch-depth: 0
+
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - name: Read version
+              id: meta
+              run: |
+                  name=$(bun -p 'require("./package.json").name')
+                  version=$(bun -p 'require("./package.json").version')
+                  tag="v$version"
+                  if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
+                    echo "::error::$tag is already released. Bump the version in package.json first."
+                    exit 1
+                  fi
+                  echo "name=$name" >> "$GITHUB_OUTPUT"
+                  echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+            - name: Install
+              run: bun install --frozen-lockfile
+
+            - name: Validate and build
+              run: bun run validate
+
+            - name: Package
+              env:
+                  NAME: ${{ steps.meta.outputs.name }}
+                  TAG: ${{ steps.meta.outputs.tag }}
+              run: |
+                  for browser in chrome firefox; do
+                    (cd "dist/$NAME-$browser" && zip -qrX "$GITHUB_WORKSPACE/$NAME-$browser-$TAG.zip" .)
+                  done
+
+            - name: Release notes
+              run: |
+                  previous=$(git describe --tags --abbrev=0 2>/dev/null || true)
+                  range=${previous:+$previous..}HEAD
+                  url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+                  {
+                    echo "## Commits"
+                    echo
+                    git log --no-merges --pretty="- %s ([%h]($url/commit/%H))" "$range"
+                  } > notes.md
+
+            - name: Publish
+              env:
+                  NAME: ${{ steps.meta.outputs.name }}
+                  TAG: ${{ steps.meta.outputs.tag }}
+              run: |
+                  gh release create "$TAG" \
+                    "$NAME-chrome-$TAG.zip" \
+                    "$NAME-firefox-$TAG.zip" \
+                    --title "$TAG" \
+                    --notes-file notes.md \
+                    --target "$GITHUB_SHA"
