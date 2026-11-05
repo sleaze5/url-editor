@@ -1,7 +1,7 @@
 {
 	"name": "url-editor",
 	"private": true,
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"description": "A simple browser extension to parse and edit the current page's URL.",
 	"homepage": "https://github.com/sleaze5/url-editor",
 	"repository": {
