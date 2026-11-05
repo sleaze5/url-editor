@@ -36,6 +36,19 @@ function parsePrerelease(text: string | undefined): Prerelease | undefined {
 	return { tag, number: Number(number) }
 }
 
+function newestStable(candidates: string[], atLeast: (version: Version) => boolean) {
+	let best: { text: string; version: Version } | undefined
+	for (const text of candidates) {
+		const version = parseVersion(text)
+		if (version === undefined || version.prerelease !== undefined) continue
+		if (!atLeast(version)) continue
+		if (best === undefined || compareStable(version, best.version) > 0) {
+			best = { text, version }
+		}
+	}
+	return best?.text
+}
+
 function isNewerOnLine(text: string, from: Version, best: Prerelease): boolean {
 	const version = parseVersion(text)
 	if (version === undefined || compareStable(version, from) !== 0) return false
@@ -43,20 +56,9 @@ function isNewerOnLine(text: string, from: Version, best: Prerelease): boolean {
 	return candidate?.tag === best.tag && candidate.number > best.number
 }
 
-function isStableOf(text: string, from: Version): boolean {
-	const version = parseVersion(text)
-	return (
-		version !== undefined &&
-		version.prerelease === undefined &&
-		compareStable(version, from) === 0
-	)
-}
-
-function prereleaseUpgrade(from: Version, candidates: string[]): string | undefined {
+function newestOnLine(from: Version, candidates: string[]): string | undefined {
 	const line = parsePrerelease(from.prerelease)
 	if (line === undefined) return undefined
-	const stable = candidates.find((text) => isStableOf(text, from))
-	if (stable !== undefined) return stable
 	let best = line
 	let bestText: string | undefined
 	for (const text of candidates) {
@@ -67,34 +69,17 @@ function prereleaseUpgrade(from: Version, candidates: string[]): string | undefi
 	return bestText
 }
 
-function isStableUpgrade(
-	version: Version | undefined,
-	from: Version,
-): version is Version {
-	return (
-		version !== undefined &&
-		version.prerelease === undefined &&
-		version.major === from.major &&
-		compareStable(version, from) > 0
-	)
-}
-
-function stableUpgrade(from: Version, candidates: string[]): string | undefined {
-	let best: { text: string; version: Version } | undefined
-	for (const text of candidates) {
-		const version = parseVersion(text)
-		if (!isStableUpgrade(version, from)) continue
-		if (best === undefined || compareStable(version, best.version) > 0) {
-			best = { text, version }
-		}
-	}
-	return best?.text
-}
-
-export function safeUpgrade(current: string, candidates: string[]): string | undefined {
+export function latestUpgrade(
+	current: string,
+	candidates: string[],
+): string | undefined {
 	const from = parseVersion(current)
 	if (from === undefined) return undefined
-	return from.prerelease === undefined
-		? stableUpgrade(from, candidates)
-		: prereleaseUpgrade(from, candidates)
+	if (from.prerelease === undefined) {
+		return newestStable(candidates, (version) => compareStable(version, from) > 0)
+	}
+	return (
+		newestStable(candidates, (version) => compareStable(version, from) >= 0) ??
+		newestOnLine(from, candidates)
+	)
 }

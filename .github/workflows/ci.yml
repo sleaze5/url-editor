@@ -28,8 +28,9 @@ jobs:
         runs-on: ubuntu-24.04-arm
         timeout-minutes: 5
         outputs:
-            app: ${{ steps.changes.outputs.app }}
-            scripts: ${{ steps.changes.outputs.scripts }}
+            build: ${{ steps.changes.outputs.build }}
+            code: ${{ steps.changes.outputs.code }}
+            test: ${{ steps.changes.outputs.test }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
@@ -46,12 +47,12 @@ jobs:
         needs: changes
         uses: ./.github/workflows/check.yml
         with:
-            code: ${{ needs.changes.outputs.app == 'true' || needs.changes.outputs.scripts == 'true' }}
-            test: ${{ needs.changes.outputs.scripts == 'true' }}
+            code: ${{ needs.changes.outputs.code == 'true' }}
+            test: ${{ needs.changes.outputs.test == 'true' }}
 
     build:
         needs: changes
-        if: needs.changes.outputs.app == 'true'
+        if: needs.changes.outputs.build == 'true'
         uses: ./.github/workflows/build.yml
         with:
             artifact: url-editor-${{ github.sha }}
@@ -65,11 +66,11 @@ jobs:
             - name: Require every selected job to pass and every other job to be skipped
               run: |
                   expected_build=skipped
-                  [ "$APP" = true ] && expected_build=success
+                  [ "$SELECTED" = true ] && expected_build=success
                   printf 'changes: %s\ncheck: %s\nbuild: %s (expected %s)\n' "$CHANGES" "$CHECK" "$BUILD" "$expected_build"
                   [ "$CHANGES" = success ] && [ "$CHECK" = success ] && [ "$BUILD" = "$expected_build" ]
               env:
-                  APP: ${{ needs.changes.outputs.app }}
+                  SELECTED: ${{ needs.changes.outputs.build }}
                   CHANGES: ${{ needs.changes.result }}
                   CHECK: ${{ needs.check.result }}
                   BUILD: ${{ needs.build.result }}

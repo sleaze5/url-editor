@@ -8,29 +8,7 @@ updates:
           interval: weekly
       cooldown:
           default-days: 7
-      ignore:
-          - dependency-name: "*"
-            update-types:
-                - version-update:semver-major
       groups:
           actions:
-              patterns:
-                  - "*"
-
-    - package-ecosystem: bun
-      directory: /
-      schedule:
-          interval: weekly
-      cooldown:
-          default-days: 7
-      ignore:
-          - dependency-name: "*"
-            update-types:
-                - version-update:semver-major
-          - dependency-name: solid-js
-          - dependency-name: "@solidjs/web"
-          - dependency-name: "@solidjs/vite-plugin"
-      groups:
-          packages:
               patterns:
                   - "*"

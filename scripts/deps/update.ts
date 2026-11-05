@@ -1,9 +1,8 @@
 import { join } from "node:path"
 import { parseArgs } from "node:util"
 
-import { skippedPackages } from "./dependabot.ts"
 import { fetchVersions } from "./npm-versions.ts"
-import { safeUpgrade } from "./semver.ts"
+import { latestUpgrade } from "./semver.ts"
 
 interface PackageJson {
 	dependencies?: Record<string, string>
@@ -19,6 +18,14 @@ interface Change {
 
 const rootDir = join(import.meta.dir, "..", "..")
 
+const { values } = parseArgs({
+	options: { "min-age-days": { type: "string", default: "7" } },
+})
+const minAgeDays = Number(values["min-age-days"])
+if (!Number.isFinite(minAgeDays) || minAgeDays < 0) {
+	throw new Error("--min-age-days takes a number of days.")
+}
+
 function isPackageJson(value: unknown): value is PackageJson {
 	return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -29,25 +36,12 @@ async function readManifest(path: string): Promise<PackageJson> {
 	return value
 }
 
-const { values } = parseArgs({
-	options: {
-		all: { type: "boolean", default: false },
-		uncovered: { type: "boolean", default: false },
-	},
-})
-if (values.all && values.uncovered) {
-	throw new Error("Pass either --all or --uncovered, not both.")
-}
-
-const skipped = values.uncovered
-	? skippedPackages(await Bun.file(join(rootDir, ".github/dependabot.yml")).text())
-	: undefined
 const packagePath = join(rootDir, "package.json")
 const manifest = await readManifest(packagePath)
 const changes: Change[] = []
 
 async function upgrade(name: string, current: string): Promise<Change | undefined> {
-	const next = safeUpgrade(current, await fetchVersions(name))
+	const next = latestUpgrade(current, await fetchVersions(name, minAgeDays))
 	return next === undefined ? undefined : { label: name, from: current, to: next }
 }
 
@@ -55,9 +49,8 @@ async function upgradeSection(
 	section: Record<string, string> | undefined,
 ): Promise<void> {
 	if (section === undefined) return
-	const names = Object.keys(section).filter((name) => skipped?.has(name) ?? true)
 	const results = await Promise.all(
-		names.map((name) => upgrade(name, section[name] ?? "")),
+		Object.entries(section).map(([name, version]) => upgrade(name, version)),
 	)
 	for (const change of results) {
 		if (change === undefined) continue

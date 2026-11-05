@@ -39,7 +39,7 @@ jobs:
                   echo "name=$(jq -r .name package.json)" >> "$GITHUB_OUTPUT"
                   echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
 
-            # The key lists every file that the build reads. Add a file here when the build starts to read it.
+            # The key lists every file that the build reads. Keep it in step with the `build` paths in the changes action.
             - id: cache
               uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
               with:
@@ -77,7 +77,7 @@ jobs:
                   NAME: ${{ steps.meta.outputs.name }}
                   VERSION: ${{ steps.meta.outputs.version }}
 
-            - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+            - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
               with:
                   name: ${{ inputs.artifact }}
                   path: ${{ runner.temp }}/package
