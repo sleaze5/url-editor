@@ -38,6 +38,7 @@ Run everything through `bun run <script>`. Bun is the only tool to install. `bun
 
 ## Rules
 
+- Never modify `README`.
 - Read [DESIGN.md](./DESIGN.md) before you change UI, styles, icons, interface text, or motion.
 - Style with Tailwind utilities in the components. Write each class name in full, never built from parts, so that Tailwind and the formatter can see it. Use only the tokens in `src/styles/theme.css`.
 - Pass values to components, not accessors, and read props as `props.x`. Never destructure props.

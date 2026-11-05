@@ -1,14 +1,3 @@
 # URL Editor
 
 A simple browser extension to parse and edit the current page's URL.
-
-Built with Solid 2, Tailwind CSS 4, and Vite on Rolldown, with Bun for everything else. Install [Bun](https://bun.com), then:
-
-```sh
-bun install
-bun run dev      # preview the popup at http://127.0.0.1:5173
-bun run build    # build dist/url-editor-chrome and dist/url-editor-firefox
-bun run check    # format check, lint, and typecheck
-```
-
-See [AGENTS.md](./AGENTS.md) for the layout and every task.
