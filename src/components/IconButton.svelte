@@ -8,14 +8,24 @@
 		icon: Component<LucideProps>
 		label: string
 		onclick: () => void
+		tip?: string
 	}
 
-	const { icon: Icon, label, onclick }: Props = $props()
+	const { icon: Icon, label, onclick, tip = label }: Props = $props()
+
+	// Only icon swaps animate in, never the first render.
+	let mounted = $state(false)
+	$effect(() => {
+		mounted = true
+	})
 </script>
 
 <button type="button" aria-label={label} {onclick}>
-	<Icon size={14} strokeWidth={2} aria-hidden="true" />
-	<Tooltip text={label} />
+	{#key Icon}
+		<span class="glyph" class:swap={mounted}
+			><Icon size={15} strokeWidth={2} aria-hidden="true" /></span>
+	{/key}
+	<Tooltip text={tip} />
 </button>
 
 <style>
@@ -29,21 +39,40 @@
 		padding: 0;
 		color: var(--muted);
 		background: transparent;
-		border: 1px solid transparent;
+		border: 0;
 		border-radius: var(--radius);
 		cursor: pointer;
 		transition:
-			color 80ms linear,
-			background-color 80ms linear;
+			color var(--fast) ease,
+			background-color var(--fast) ease,
+			transform var(--fast) var(--ease-out);
 	}
 
-	button:hover {
-		color: var(--text);
-		background: var(--surface-hover);
+	@media (hover: hover) {
+		button:hover {
+			color: var(--text);
+			background: var(--surface-hover);
+		}
 	}
 
-	button:focus-visible {
-		outline: none;
-		border-color: var(--border-focus);
+	button:active {
+		transform: scale(var(--press-scale));
+	}
+
+	.glyph {
+		display: grid;
+	}
+
+	.swap {
+		transition:
+			opacity 150ms ease,
+			transform 150ms var(--ease-out);
+	}
+
+	@starting-style {
+		.swap {
+			opacity: 0;
+			transform: scale(var(--enter-scale));
+		}
 	}
 </style>

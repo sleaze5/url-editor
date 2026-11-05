@@ -1,7 +1,7 @@
 <script lang="ts">
 	import GripVertical from "@lucide/svelte/icons/grip-vertical"
 	import Plus from "@lucide/svelte/icons/plus"
-	import Trash2 from "@lucide/svelte/icons/trash-2"
+	import X from "@lucide/svelte/icons/x"
 	import { tick } from "svelte"
 
 	import {
@@ -131,17 +131,19 @@
 
 <svelte:window
 	onpointerdown={() => (pressing = true)}
-	onpointerup={() => (pressing = false)} />
+	onpointerup={() => (pressing = false)}
+	onblur={endDrag} />
 
-<section class:dragging={dragIndex !== -1}>
+<section class:dragging={dragIndex !== -1} aria-labelledby="params-heading">
 	{#if showQuery}
 		<div
 			class="query"
 			onfocusin={() => (queryOpened = true)}
 			onfocusout={() => (queryOpened = false)}>
-			<span class="caption">query string</span>
+			<label class="caption" for="query-string">Query string</label>
 			<Field
-				label="Query"
+				id="query-string"
+				label="Query string"
 				value={query.encoded(url)}
 				toRaw={() => query.encoded(url)}
 				onedit={(raw) => onqueryedit(query, raw)}
@@ -150,10 +152,19 @@
 	{/if}
 
 	<header>
-		<span>params</span>
-		<span class="count">{params.length}</span>
-		<IconButton icon={Plus} label="Add param" onclick={add} />
+		<h2 id="params-heading" class="caption">Parameters</h2>
+		{#if params.length > 0}
+			<span class="count">{params.length}</span>
+			<IconButton icon={Plus} label="Add parameter" onclick={add} />
+		{/if}
 	</header>
+
+	{#if params.length === 0}
+		<button type="button" class="empty" onclick={add}>
+			<Plus size={13} strokeWidth={2.25} aria-hidden="true" />
+			Add a query parameter
+		</button>
+	{/if}
 
 	{#each params as param, index (index)}
 		<div
@@ -164,44 +175,48 @@
 			<button
 				type="button"
 				class="grip"
-				aria-label="Reorder param {index + 1} (arrow keys)"
+				aria-label="Move parameter {index + 1}"
+				aria-describedby="grip-hint"
 				onpointerdown={(event) => startDrag(event, index)}
 				onpointermove={drag}
 				onpointerup={endDrag}
 				onpointercancel={endDrag}
+				onlostpointercapture={endDrag}
 				onkeydown={(event) => void nudge(event, index)}>
 				<GripVertical size={14} aria-hidden="true" />
-				<Tooltip text="Drag to reorder" side="right" />
+				<Tooltip text="Drag, or use ↑ ↓, to reorder" side="right" />
 			</button>
 			<Field
-				label="Param {index + 1} key"
-				placeholder="key"
+				label="Parameter {index + 1} name"
+				placeholder="name…"
 				value={param.key}
 				toRaw={() => decodeParam(param.key)}
 				onedit={editor(index, "key")}
 				autofocus={index === focusIndex}
 				{onsubmit} />
 			<Field
-				label="Param {index + 1} value"
-				placeholder="value"
+				label="Parameter {index + 1} value"
+				placeholder="value…"
 				value={param.value}
 				toRaw={() => decodeParam(param.value)}
 				onedit={editor(index, "value")}
 				{onsubmit} />
 			<IconButton
-				icon={Trash2}
-				label="Remove param"
+				icon={X}
+				label="Remove parameter {index + 1}"
+				tip="Remove"
 				onclick={() => onremove(index)} />
 		</div>
 	{/each}
+	<span id="grip-hint" hidden>Use the up and down arrow keys to reorder.</span>
 </section>
 
 <style>
 	section {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		padding-top: 6px;
+		gap: var(--gap);
+		padding-top: 10px;
 		border-top: 1px solid var(--border);
 	}
 
@@ -219,31 +234,61 @@
 		display: flex;
 		align-items: center;
 		gap: var(--gap);
-		color: var(--muted);
-		font-size: var(--label-size);
-		letter-spacing: var(--label-tracking);
-		text-transform: uppercase;
-		line-height: 14px;
-		user-select: none;
+		height: var(--control-height);
+		margin-top: -4px;
+		margin-bottom: -2px;
 	}
 
 	.count {
 		flex: 1;
-		opacity: 0.6;
+		color: var(--muted);
+		font-size: var(--label-size);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.query {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
-		padding-bottom: 6px;
+		gap: 2px;
+		padding-bottom: 10px;
 		margin-bottom: 4px;
 		border-bottom: 1px solid var(--border);
 	}
 
+	.empty {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 5px;
+		height: 40px;
+		color: var(--muted);
+		font-weight: 500;
+		background: transparent;
+		border: 1px dashed var(--border-hover);
+		border-radius: var(--radius);
+		cursor: pointer;
+		transition:
+			color var(--fast) ease,
+			background-color var(--fast) ease,
+			border-color var(--fast) ease,
+			transform var(--fast) var(--ease-out);
+	}
+
+	@media (hover: hover) {
+		.empty:hover {
+			color: var(--text);
+			background: var(--surface-hover);
+			border-color: var(--muted);
+		}
+	}
+
+	.empty:active {
+		transform: scale(var(--press-scale));
+	}
+
 	.row {
 		display: grid;
-		grid-template-columns: 16px minmax(0, 2fr) minmax(0, 3fr) var(--control-height);
+		grid-template-columns: 20px minmax(0, 2fr) minmax(0, 3fr) var(--control-height);
 		align-items: start;
 		gap: 4px;
 		position: relative;
@@ -258,36 +303,32 @@
 		background: var(--surface-hover);
 		border: 1px solid var(--border);
 		border-radius: calc(var(--radius) + 2px);
+		box-shadow: var(--shadow);
 	}
 
 	.grip {
 		position: relative;
 		display: grid;
 		place-items: center;
-		width: 16px;
+		width: 20px;
 		height: var(--control-height);
 		padding: 0;
 		color: var(--muted);
 		background: transparent;
-		border: 1px solid transparent;
+		border: 0;
 		border-radius: var(--radius);
 		cursor: grab;
 		touch-action: none;
-		opacity: 0.6;
-		transition:
-			color 80ms linear,
-			opacity 80ms linear;
+		transition: color var(--fast) ease;
 	}
 
-	.grip:hover,
+	@media (hover: hover) {
+		.grip:hover {
+			color: var(--text);
+		}
+	}
+
 	.row.active .grip {
 		color: var(--text);
-		opacity: 1;
-	}
-
-	.grip:focus-visible {
-		outline: none;
-		border-color: var(--border-focus);
-		opacity: 1;
 	}
 </style>

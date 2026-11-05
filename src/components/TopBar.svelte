@@ -14,17 +14,17 @@
 
 <header>
 	<img src="./icons/icon.svg" alt="" width="16" height="16" draggable="false" />
-	<span class="title">URL Editor</span>
+	<h1 class="title" translate="no">URL Editor</h1>
 	{#if onfocustab}
 		<span class="action">
-			<IconButton icon={View} label="Focus tab" onclick={onfocustab} />
+			<IconButton icon={View} label="Switch to the tab" onclick={onfocustab} />
 		</span>
 	{/if}
 	{#if onpopout}
 		<span class="action">
 			<IconButton
 				icon={PictureInPicture2}
-				label="Pop out to a new window"
+				label="Open in a window"
 				onclick={onpopout} />
 		</span>
 	{/if}
@@ -36,7 +36,8 @@
 		flex: none;
 		align-items: center;
 		gap: 8px;
-		padding: 10px var(--page-padding);
+		height: 40px;
+		padding: 0 var(--page-padding);
 		background: var(--bg);
 		border-bottom: 1px solid var(--border);
 		user-select: none;
@@ -49,13 +50,17 @@
 
 	.title {
 		flex: 1;
-		font-size: 14px;
-		font-weight: 700;
-		letter-spacing: 0.01em;
+		font-size: 13px;
+		font-weight: 600;
 		line-height: 18px;
 	}
 
 	.action {
-		margin: -3px -4px;
+		display: flex;
+	}
+
+	/* Optically align the last icon's glyph with the content edge. */
+	.action:last-child {
+		margin-right: -6px;
 	}
 </style>

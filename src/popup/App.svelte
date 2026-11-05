@@ -82,7 +82,7 @@
 		href = withParams(href, params)
 	}
 
-	const FAILED_MS = 2000
+	const FAILED_MS = 5000
 	let failed = $state(false)
 	let failedTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -91,6 +91,11 @@
 		clearTimeout(failedTimer)
 		failedTimer = setTimeout(() => (failed = false), FAILED_MS)
 	}
+
+	// An edit replaces the failed URL, so its error no longer applies.
+	$effect(() => {
+		if (href) failed = false
+	})
 
 	function apply(): void {
 		if (tab) navigate(tab, href).catch(showFailure)
@@ -154,15 +159,18 @@
 
 <svelte:window onkeydown={handleWindowKeydown} />
 
-<main onfocusin={snapshot}>
+<div class="app" onfocusin={snapshot}>
 	<TopBar
 		onpopout={tab && canPopOut(tab) ? handlePopOut : undefined}
 		onfocustab={tab && status !== "closed" && canFocusTab(tab)
 			? handleFocusTab
 			: undefined} />
-	<div class="content">
+	<main>
 		{#if status === "closed"}
-			<p>This tab was closed.</p>
+			<div class="notice" role="status">
+				<p class="notice-title">This tab was closed</p>
+				<p>Open the editor from another tab to keep editing its URL.</p>
+			</div>
 		{:else if url}
 			<UrlBar
 				{href}
@@ -181,9 +189,12 @@
 				onremove={removeParam}
 				onsubmit={apply} />
 		{:else if status === "unavailable"}
-			<p>This tab's URL can't be read.</p>
+			<div class="notice" role="status">
+				<p class="notice-title">No URL to edit</p>
+				<p>This tab hasn't loaded a page yet. Try again once it has.</p>
+			</div>
 		{/if}
-	</div>
+	</main>
 	{#if url && status !== "closed"}
 		<ActionBar
 			dirty={href !== original}
@@ -191,30 +202,46 @@
 			onreset={() => load(original)}
 			onapply={apply} />
 	{/if}
-</main>
+</div>
 
 <style>
-	main {
+	.app {
 		display: flex;
 		flex-direction: column;
 		height: var(--popup-height);
 	}
 
-	:global(.windowed) main {
-		height: 100vh;
+	:global(.windowed) .app {
+		height: 100dvh;
 	}
 
-	.content {
+	main {
 		display: flex;
 		flex: 1 1 auto;
 		flex-direction: column;
-		gap: 6px;
+		gap: 10px;
 		min-height: 0;
 		padding: var(--page-padding);
 		overflow-y: auto;
+		overscroll-behavior: contain;
+		/* Keeps a focused field and its ring clear of the header and footer edges. */
+		scroll-padding-block: var(--page-padding);
 	}
 
-	p {
+	.notice {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		margin: auto;
+		max-width: 32ch;
 		color: var(--muted);
+		text-align: center;
+		text-wrap: balance;
+	}
+
+	.notice-title {
+		color: var(--text);
+		font-size: 13px;
+		font-weight: 600;
 	}
 </style>

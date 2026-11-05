@@ -1,6 +1,4 @@
 <script lang="ts">
-	import ArrowLeftRight from "@lucide/svelte/icons/arrow-left-right"
-
 	import type { PartSpec } from "../lib/url/parts"
 	import Field from "./Field.svelte"
 	import Tooltip from "./Tooltip.svelte"
@@ -13,6 +11,7 @@
 		onfocus?: () => void
 		onblur?: () => void
 		autofocus?: boolean
+		errorAlign?: "start" | "end"
 	}
 
 	const {
@@ -23,6 +22,7 @@
 		onfocus,
 		onblur,
 		autofocus = false,
+		errorAlign = "start",
 	}: Props = $props()
 
 	const flippable = $derived(part.id === "hostname")
@@ -39,6 +39,8 @@
 			{value}
 			toRaw={flippable ? () => value : () => part.raw(url)}
 			onedit={(raw) => onedit(part, raw)}
+			error={part.error}
+			{errorAlign}
 			{onsubmit}
 			{autofocus} />
 	</label>
@@ -46,11 +48,9 @@
 		<button
 			type="button"
 			class="flip"
-			class:on={unicode}
-			aria-label="Toggle Punycode"
 			aria-pressed={unicode}
 			onclick={() => (unicode = !unicode)}>
-			<ArrowLeftRight size={12} strokeWidth={2} aria-hidden="true" />
+			Unicode
 			<Tooltip text={unicode ? "Show Punycode" : "Show Unicode"} />
 		</button>
 	{/if}
@@ -65,35 +65,47 @@
 	label {
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
+		gap: 2px;
 	}
 
 	/* Sits at the end of the caption row, outside the <label> so it doesn't become the
-label's control. */
+	   label's control. */
 	.flip {
 		position: absolute;
 		top: 0;
 		right: 0;
-		display: grid;
-		place-items: center;
-		width: 18px;
-		height: 14px;
-		padding: 0;
+		height: 16px;
+		padding: 0 5px;
 		color: var(--muted);
+		font-size: var(--label-size);
+		font-weight: 500;
+		line-height: 14px;
 		background: transparent;
 		border: 1px solid transparent;
 		border-radius: var(--radius);
 		cursor: pointer;
-		transition: color 80ms linear;
+		transition:
+			color var(--fast) ease,
+			background-color var(--fast) ease,
+			border-color var(--fast) ease;
 	}
 
-	.flip:hover,
-	.flip.on {
+	/* Grows the hit area to 24px without changing the layout. */
+	.flip::before {
+		content: "";
+		position: absolute;
+		inset: -4px 0;
+	}
+
+	@media (hover: hover) {
+		.flip:hover {
+			color: var(--text);
+		}
+	}
+
+	.flip[aria-pressed="true"] {
 		color: var(--text);
-	}
-
-	.flip:focus-visible {
-		outline: none;
-		border-color: var(--border-focus);
+		background: var(--surface-hover);
+		border-color: var(--border);
 	}
 </style>
