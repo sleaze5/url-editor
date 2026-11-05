@@ -1,8 +1,5 @@
 <script lang="ts">
-	import ArrowRight from "@lucide/svelte/icons/arrow-right"
-	import Asterisk from "@lucide/svelte/icons/asterisk"
-
-	import Tooltip from "./Tooltip.svelte"
+	import CornerDownLeft from "@lucide/svelte/icons/corner-down-left"
 
 	interface Props {
 		dirty: boolean
@@ -15,20 +12,17 @@
 </script>
 
 <footer>
-	<span class="hint" aria-live="polite">
+	<p class="status" aria-live="polite">
 		{#if failed}
-			<span class="error">Can't open this URL</span>
+			<span class="error">The browser blocked this URL. Copy it instead.</span>
 		{:else if dirty}
-			<span class="modified" role="img" aria-label="Modified">
-				<Asterisk size={14} strokeWidth={2.5} aria-hidden="true" />
-				<Tooltip text="Modified" side="right" />
-			</span>
+			<span class="edited">Edited</span>
 		{/if}
-	</span>
+	</p>
 	<button type="button" disabled={!dirty} onclick={onreset}>Reset</button>
 	<button type="button" class="primary" onclick={onapply}>
-		Apply
-		<ArrowRight size={13} strokeWidth={2.5} aria-hidden="true" />
+		Open URL
+		<kbd aria-hidden="true"><CornerDownLeft size={12} strokeWidth={2.25} /></kbd>
 	</button>
 </footer>
 
@@ -38,72 +32,102 @@
 		flex: none;
 		align-items: center;
 		gap: var(--gap);
-		padding: 4px var(--page-padding);
+		min-height: 44px;
+		padding: 8px var(--page-padding);
 		background: var(--bg);
 		border-top: 1px solid var(--border);
 	}
 
-	.hint {
+	.status {
 		flex: 1;
-		display: flex;
+		min-width: 0;
 		color: var(--muted);
+		font-size: var(--label-size);
+		line-height: 14px;
+	}
+
+	.status > span {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		transition: opacity var(--fast) ease;
+	}
+
+	@starting-style {
+		.status > span {
+			opacity: 0;
+		}
+	}
+
+	.edited::before {
+		content: "";
+		width: 6px;
+		height: 6px;
+		background: var(--focus);
+		border-radius: 50%;
 	}
 
 	.error {
 		color: var(--danger);
-		font-size: var(--label-size);
-		letter-spacing: var(--label-tracking);
-		text-transform: uppercase;
-	}
-
-	.modified {
-		position: relative;
-		display: flex;
 	}
 
 	button {
 		display: inline-flex;
 		align-items: center;
-		gap: 4px;
-		height: 24px;
-		padding: 0 10px;
-		font-size: 11px;
+		gap: 6px;
+		height: 28px;
+		padding: 0 12px;
 		font-weight: 500;
-		letter-spacing: var(--label-tracking);
-		text-transform: uppercase;
+		white-space: nowrap;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 		cursor: pointer;
 		transition:
-			background-color 80ms linear,
-			border-color 80ms linear;
+			background-color var(--fast) ease,
+			border-color var(--fast) ease,
+			opacity var(--fast) ease,
+			transform var(--fast) var(--ease-out);
 	}
 
-	button:hover:not(:disabled) {
-		background: var(--surface-hover);
-		border-color: var(--border-hover);
+	@media (hover: hover) {
+		button:hover:not(:disabled) {
+			background: var(--surface-hover);
+			border-color: var(--border-hover);
+		}
 	}
 
-	button:focus-visible {
-		outline: none;
-		border-color: var(--border-focus);
+	button:active:not(:disabled) {
+		transform: scale(var(--press-scale));
 	}
 
 	button:disabled {
-		opacity: 0.4;
+		opacity: 0.45;
 		cursor: default;
 	}
 
 	.primary {
-		color: var(--accent-text);
+		padding-right: 6px;
+		color: var(--primary-text);
 		font-weight: 600;
-		background: var(--accent);
-		border-color: var(--accent);
+		background: var(--primary);
+		border-color: var(--primary);
 	}
 
-	.primary:hover:not(:disabled) {
-		background: var(--accent-hover);
-		border-color: var(--accent-hover);
+	@media (hover: hover) {
+		.primary:hover:not(:disabled) {
+			background: var(--primary-hover);
+			border-color: var(--primary-hover);
+		}
+	}
+
+	kbd {
+		display: grid;
+		place-items: center;
+		width: 18px;
+		height: 18px;
+		border: 1px solid color-mix(in srgb, currentcolor 30%, transparent);
+		border-radius: 3px;
+		opacity: 0.75;
 	}
 </style>

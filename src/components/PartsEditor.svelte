@@ -1,4 +1,6 @@
 <script lang="ts">
+	import Plus from "@lucide/svelte/icons/plus"
+
 	import {
 		getPart,
 		isAvailable,
@@ -22,7 +24,7 @@
 		["pathname"],
 		["hash"],
 	]
-	const WIDTHS: Partial<Record<PartId, string>> = { protocol: "64px", port: "56px" }
+	const WIDTHS: Partial<Record<PartId, string>> = { protocol: "72px", port: "64px" }
 
 	let revealed: readonly PartId[] = $state.raw([])
 	let focusId: PartId | null = $state(null)
@@ -62,10 +64,10 @@
 	}
 </script>
 
-<section>
+<section aria-label="URL parts">
 	{#each rows as row, index (index)}
 		<div class="row" style:grid-template-columns={columns(row)}>
-			{#each row as id (id)}
+			{#each row as id, cell (id)}
 				<PartField
 					part={getPart(id)}
 					{url}
@@ -73,16 +75,21 @@
 					{onsubmit}
 					onfocus={() => reveal(id)}
 					onblur={() => settle(id)}
-					autofocus={id === focusId} />
+					autofocus={id === focusId}
+					errorAlign={cell > 0 && cell === row.length - 1
+						? "end"
+						: "start"} />
 			{/each}
 		</div>
 	{/each}
 
 	{#if hidden.length > 0}
-		<div class="add">
+		<div class="add" role="group" aria-label="Add a URL part">
 			{#each hidden as id (id)}
-				<button type="button" onclick={() => open(id)}
-					>+ {getPart(id).label}</button>
+				<button type="button" onclick={() => open(id)}>
+					<Plus size={12} strokeWidth={2.25} aria-hidden="true" />
+					{getPart(id).label}
+				</button>
 			{/each}
 		</div>
 	{/if}
@@ -92,44 +99,49 @@
 	section {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 8px;
 	}
 
 	.row {
 		display: grid;
-		gap: 4px;
+		gap: var(--gap);
 	}
 
 	.add {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 4px;
+		gap: var(--gap);
 	}
 
 	.add button {
-		height: 20px;
-		padding: 0 6px;
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		height: 24px;
+		padding: 0 8px 0 6px;
 		color: var(--muted);
 		font-size: var(--label-size);
-		letter-spacing: var(--label-tracking);
-		text-transform: uppercase;
+		font-weight: 500;
 		background: transparent;
 		border: 1px dashed var(--border-hover);
 		border-radius: var(--radius);
 		cursor: pointer;
 		transition:
-			color 80ms linear,
-			border-color 80ms linear;
+			color var(--fast) ease,
+			border-color var(--fast) ease,
+			background-color var(--fast) ease,
+			transform var(--fast) var(--ease-out);
 	}
 
-	.add button:hover {
-		color: var(--text);
-		border-color: var(--border-focus);
+	@media (hover: hover) {
+		.add button:hover {
+			color: var(--text);
+			background: var(--surface-hover);
+			border-color: var(--muted);
+		}
 	}
 
-	.add button:focus-visible {
-		outline: none;
-		border-color: var(--border-focus);
-		border-style: solid;
+	.add button:active {
+		transform: scale(var(--press-scale));
 	}
 </style>

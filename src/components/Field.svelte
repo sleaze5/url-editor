@@ -2,6 +2,7 @@
 	import { onMount } from "svelte"
 
 	interface Props {
+		id?: string
 		label: string
 		value: string
 		toRaw: () => string
@@ -9,9 +10,14 @@
 		onsubmit?: () => void
 		placeholder?: string
 		autofocus?: boolean
+		/** Shown under the field while the typed text can't be used. */
+		error?: string | undefined
+		/** Which edge the error callout lines up with. */
+		errorAlign?: "start" | "end"
 	}
 
 	const {
+		id,
 		label,
 		value,
 		toRaw,
@@ -19,7 +25,11 @@
 		onsubmit,
 		placeholder = "",
 		autofocus = false,
+		error = `Not a valid ${label.toLowerCase()}`,
+		errorAlign = "start",
 	}: Props = $props()
+
+	const errorId = $props.id()
 
 	const LINE_BREAKS = /[\n\r]+/gu
 
@@ -79,60 +89,121 @@
 	})
 </script>
 
-<textarea
-	bind:this={el}
-	class:invalid
-	rows="1"
-	spellcheck="false"
-	autocomplete="off"
-	autocapitalize="off"
-	translate="no"
-	enterkeyhint="go"
-	aria-label={label}
-	aria-invalid={invalid}
-	{placeholder}
-	value={editing ? draft : value}
-	onfocus={handleFocus}
-	onblur={handleBlur}
-	oninput={handleInput}
-	onkeydown={handleKeydown}></textarea>
+<div class="field">
+	<textarea
+		bind:this={el}
+		{id}
+		class:invalid
+		rows="1"
+		spellcheck="false"
+		autocomplete="off"
+		autocapitalize="off"
+		translate="no"
+		enterkeyhint="go"
+		aria-label={label}
+		aria-invalid={invalid}
+		aria-describedby={invalid ? errorId : undefined}
+		{placeholder}
+		value={editing ? draft : value}
+		onfocus={handleFocus}
+		onblur={handleBlur}
+		oninput={handleInput}
+		onkeydown={handleKeydown}></textarea>
+	{#if invalid}
+		<p id={errorId} class="error {errorAlign}" aria-live="polite">
+			{error}. <kbd>Esc</kbd> to undo.
+		</p>
+	{/if}
+</div>
 
 <style>
+	.field {
+		position: relative;
+		min-width: 0;
+	}
+
 	textarea {
 		display: block;
 		width: 100%;
 		min-width: 0;
 		height: var(--control-height);
-		padding: 2px 6px;
+		padding: 3px 7px;
 		resize: none;
 		overflow: hidden;
 		white-space: pre;
 		font: 12px/18px var(--mono);
+		font-variant-ligatures: none;
 		background: var(--surface);
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 		outline: none;
-		transition: border-color 80ms linear;
+		transition:
+			border-color var(--fast) ease,
+			box-shadow var(--fast) ease;
 	}
 
-	textarea:hover {
-		border-color: var(--border-hover);
+	@media (hover: hover) {
+		textarea:hover {
+			border-color: var(--border-hover);
+		}
 	}
 
 	/* :focus (not a class) so wrapping applies before handleFocus measures height. */
 	textarea:focus {
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
-		background: var(--surface-active);
-		border-color: var(--border-focus);
+		border-color: var(--focus);
+		box-shadow: 0 0 0 3px var(--focus-ring);
 	}
 
 	textarea.invalid {
 		border-color: var(--danger);
+		box-shadow: 0 0 0 3px var(--danger-ring);
 	}
 
 	textarea::placeholder {
-		color: var(--muted);
-		opacity: 0.6;
+		color: var(--placeholder);
+		opacity: 1;
+	}
+
+	/* Floats over what follows, so an error never reflows the form mid-keystroke. */
+	.error {
+		position: absolute;
+		top: calc(100% + 4px);
+		z-index: 3;
+		width: max-content;
+		max-width: 280px;
+		padding: 4px 8px;
+		color: var(--text);
+		font-size: var(--label-size);
+		line-height: 15px;
+		background: var(--surface-raised);
+		border: 1px solid var(--danger);
+		border-radius: var(--radius);
+		box-shadow: var(--shadow);
+		pointer-events: none;
+		transition:
+			opacity var(--fast) ease,
+			transform var(--fast) var(--ease-out);
+	}
+
+	@starting-style {
+		.error {
+			opacity: 0;
+			transform: translateY(-2px);
+		}
+	}
+
+	.start {
+		left: 0;
+	}
+
+	.end {
+		right: 0;
+	}
+
+	kbd {
+		font: inherit;
+		font-weight: 600;
 	}
 </style>

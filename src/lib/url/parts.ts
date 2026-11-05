@@ -14,6 +14,8 @@ export type PartId =
 export interface PartSpec {
 	id: PartId
 	label: string
+	/** Why typed text was rejected, for parts that can reject it. */
+	error?: string
 	encoded: (url: URL) => string
 	raw: (url: URL) => string
 	apply: (url: URL, raw: string) => boolean
@@ -60,7 +62,8 @@ function textPart(
 export const PARTS: readonly PartSpec[] = [
 	{
 		id: "protocol",
-		label: "protocol",
+		label: "Protocol",
+		error: "Use a scheme such as https or ftp",
 		encoded: (url) => url.protocol.slice(0, -1),
 		raw: (url) => url.protocol.slice(0, -1),
 		apply: (url, raw) => {
@@ -69,13 +72,13 @@ export const PARTS: readonly PartSpec[] = [
 			return url.protocol === `${scheme}:`
 		},
 	},
-	textPart("username", "username", {
+	textPart("username", "Username", {
 		read: (url) => url.username,
 		write: (url, value) => {
 			url.username = value
 		},
 	}),
-	textPart("password", "password", {
+	textPart("password", "Password", {
 		read: (url) => url.password,
 		write: (url, value) => {
 			url.password = value
@@ -83,7 +86,8 @@ export const PARTS: readonly PartSpec[] = [
 	}),
 	{
 		id: "hostname",
-		label: "hostname",
+		label: "Hostname",
+		error: "Not a valid hostname",
 		encoded: (url) => url.hostname,
 		raw: (url) => toUnicodeHost(url.hostname),
 		apply: (url, raw) => {
@@ -93,7 +97,8 @@ export const PARTS: readonly PartSpec[] = [
 	},
 	{
 		id: "port",
-		label: "port",
+		label: "Port",
+		error: "Use a number from 0 to 65535",
 		encoded: (url) => url.port,
 		raw: (url) => url.port,
 		apply: (url, raw) => {
@@ -103,21 +108,21 @@ export const PARTS: readonly PartSpec[] = [
 			return true
 		},
 	},
-	textPart("pathname", "path", {
+	textPart("pathname", "Path", {
 		read: (url) => url.pathname,
 		write: (url, value) => {
 			url.pathname = value
 		},
 		keep: PATH_KEEP,
 	}),
-	textPart("search", "query", {
+	textPart("search", "Query", {
 		read: (url) => url.search.slice(1),
 		write: (url, value) => {
 			url.search = value
 		},
 		keep: QUERY_KEEP,
 	}),
-	textPart("hash", "hash", {
+	textPart("hash", "Hash", {
 		read: (url) => url.hash.slice(1),
 		write: (url, value) => {
 			url.hash = value

@@ -1,34 +1,80 @@
+/* Tokens. Light and dark are designed together and follow the browser's theme, so the
+   popup matches the toolbar it opens from. */
 :root {
-	color-scheme: dark;
+	color-scheme: light dark;
 
-	--bg: #0c0c0d;
-	--surface: #141416;
-	--surface-hover: #1b1b1e;
-	--surface-active: #19191c;
-	--border: #232327;
-	--border-hover: #303036;
-	--border-focus: #4b4b53;
-	--text: #d6d6da;
-	--muted: #6f6f78;
-	--danger: #e5484d;
-	--accent: #e6e6e9;
-	--accent-hover: #ffffff;
-	--accent-text: #0c0c0d;
+	--bg: #f6f6f7;
+	--surface: #ffffff;
+	--surface-hover: #eeeef0;
+	--surface-raised: #ffffff;
+	--border: #dcdce0;
+	--border-hover: #c2c2c9;
+	--text: #1b1b1f;
+	--muted: #5f5f6a;
+	--placeholder: #73737d;
+	--focus: #1f6feb;
+	--focus-ring: rgb(31 111 235 / 0.35);
+	--selection: rgb(31 111 235 / 0.2);
+	--danger: #cf222e;
+	--danger-ring: rgb(207 34 46 / 0.3);
+	--primary: #1b1b1f;
+	--primary-hover: #34343b;
+	--primary-text: #ffffff;
+	--shadow: 0 4px 12px -2px rgb(0 0 0 / 0.16), 0 1px 2px rgb(0 0 0 / 0.08);
 
-	--radius: 3px;
+	--radius: 4px;
 	--gap: 6px;
 	--popup-width: 440px;
-	--popup-height: 380px;
-	--page-padding: 10px;
-	--control-height: 24px;
-	--label-size: 10px;
-	--label-tracking: 0.05em;
-	/* `monospace` is the browser's "Fixed-width font"; leaving font-family unset elsewhere
-	   gives its "Standard font". */
-	--mono: monospace;
+	--popup-height: 400px;
+	--page-padding: 12px;
+	--control-height: 26px;
+	--label-size: 11px;
 
-	font-size: 12px;
-	line-height: 1.4;
+	--font-ui:
+		system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+	--mono:
+		ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas,
+		"DejaVu Sans Mono", "Liberation Mono", monospace;
+
+	/* Motion: one curve for responses, kept short; hover/colour uses plain ease. */
+	--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+	--fast: 120ms;
+	--press-scale: 0.97;
+	--enter-scale: 0.8;
+
+	font: 12px/1.4 var(--font-ui);
+	-webkit-font-smoothing: antialiased;
+	-webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #0e0e11;
+		--surface: #17171b;
+		--surface-hover: #1e1e23;
+		--surface-raised: #222228;
+		--border: #2a2a31;
+		--border-hover: #3c3c45;
+		--text: #e4e4e8;
+		--muted: #8e8e98;
+		--placeholder: #80808a;
+		--focus: #6ea8fe;
+		--focus-ring: rgb(110 168 254 / 0.4);
+		--selection: rgb(110 168 254 / 0.28);
+		--danger: #ff6b6b;
+		--danger-ring: rgb(255 107 107 / 0.3);
+		--primary: #ececf0;
+		--primary-hover: #ffffff;
+		--primary-text: #0e0e11;
+		--shadow: 0 6px 16px -4px rgb(0 0 0 / 0.6), 0 1px 2px rgb(0 0 0 / 0.4);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--press-scale: 1;
+		--enter-scale: 1;
+	}
 }
 
 *,
@@ -46,6 +92,7 @@ body {
 
 html {
 	overflow: hidden;
+	caret-color: var(--focus);
 }
 
 body {
@@ -62,14 +109,23 @@ textarea {
 	color: inherit;
 }
 
-::selection {
-	background: #34343c;
+button {
+	touch-action: manipulation;
 }
 
-@media (prefers-reduced-motion: reduce) {
-	* {
-		transition: none !important;
-	}
+::selection {
+	background: var(--selection);
+}
+
+/* Shared focus treatment: a ring outside the border, so it reads on every surface. */
+:focus-visible {
+	outline: 2px solid var(--focus);
+	outline-offset: 1px;
+}
+
+h1,
+h2 {
+	font: inherit;
 }
 
 .caption {
@@ -77,17 +133,25 @@ textarea {
 	padding-left: 1px;
 	color: var(--muted);
 	font-size: var(--label-size);
-	letter-spacing: var(--label-tracking);
-	text-transform: uppercase;
-	line-height: 14px;
+	font-weight: 500;
+	line-height: 16px;
 	user-select: none;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
 }
 
 /* Chromium ignores ::-webkit-scrollbar once the standard scrollbar-* properties are set,
    so those are limited to Firefox. */
 ::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
+	width: 10px;
+	height: 10px;
 }
 
 ::-webkit-scrollbar-button {
@@ -99,16 +163,14 @@ textarea {
 }
 
 ::-webkit-scrollbar-track {
-	background: var(--bg);
-	border-left: 1px solid var(--border);
+	background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-	background: var(--border-focus);
+	background: var(--border-hover);
 	background-clip: padding-box;
-	border: 2px solid transparent;
-	border-left-width: 3px;
-	border-radius: 4px;
+	border: 3px solid transparent;
+	border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -118,6 +180,6 @@ textarea {
 @supports not selector(::-webkit-scrollbar) {
 	:root {
 		scrollbar-width: thin;
-		scrollbar-color: var(--border-focus) transparent;
+		scrollbar-color: var(--border-hover) transparent;
 	}
 }
