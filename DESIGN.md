@@ -19,8 +19,8 @@ All colours live in `src/styles/global.css` as custom properties, with a light s
 | `--bg`, `--surface`, `--surface-hover`, `--surface-raised` | Page, inputs, hover, and floating layers (tooltips, callouts) |
 | `--border`, `--border-hover` | Control outlines and dividers |
 | `--text`, `--muted`, `--placeholder` | Body, labels, and placeholders; each meets 4.5:1 on its surface |
-| `--focus`, `--focus-ring`, `--selection` | The single accent: focus, caret, selection, and the "Edited" dot |
-| `--danger`, `--danger-ring` | Invalid input and failure messages |
+| `--focus`, `--selection` | The single accent: focus, caret, selection, and the "Edited" dot |
+| `--danger` | Invalid input and failure messages |
 | `--primary`, `--primary-hover`, `--primary-text` | The primary button |
 
 Sizing: base type 12px, labels 11px/500, controls 26px tall, buttons 28px, minimum pointer target 24px. Spacing steps are 4, 6, 8, 10, and 12px. Radius is 4px.

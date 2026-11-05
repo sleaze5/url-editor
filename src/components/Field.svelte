@@ -137,9 +137,7 @@
 		border: 1px solid var(--border);
 		border-radius: var(--radius);
 		outline: none;
-		transition:
-			border-color var(--fast) ease,
-			box-shadow var(--fast) ease;
+		transition: border-color var(--fast) ease;
 	}
 
 	@media (hover: hover) {
@@ -153,12 +151,10 @@
 		white-space: pre-wrap;
 		overflow-wrap: anywhere;
 		border-color: var(--focus);
-		box-shadow: 0 0 0 3px var(--focus-ring);
 	}
 
 	textarea.invalid {
 		border-color: var(--danger);
-		box-shadow: 0 0 0 3px var(--danger-ring);
 	}
 
 	textarea::placeholder {
