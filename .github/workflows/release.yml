@@ -12,18 +12,16 @@ concurrency:
 
 jobs:
     release:
-        runs-on: ubuntu-slim
+        runs-on: ubuntu-24.04-arm
         timeout-minutes: 10
         env:
             GH_TOKEN: ${{ github.token }}
         steps:
-            - uses: actions/checkout@v7
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   fetch-depth: 0
 
-            - uses: oven-sh/setup-bun@v2
-              with:
-                  bun-version: latest
+            - uses: ./.github/actions/setup-bun
 
             - name: Read version
               id: meta
@@ -38,11 +36,8 @@ jobs:
                   echo "name=$name" >> "$GITHUB_OUTPUT"
                   echo "tag=$tag" >> "$GITHUB_OUTPUT"
 
-            - name: Install
-              run: bun install --frozen-lockfile
-
-            - name: Validate and build
-              run: bun run validate
+            - name: Check and build
+              run: bun run ci
 
             - name: Package
               env:

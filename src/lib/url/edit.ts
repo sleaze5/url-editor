@@ -1,7 +1,7 @@
-import { decodeParam, encodeParamKey, encodeParamValue } from "./codec"
-import { parseHref, rawHref } from "./href"
-import { type Param, serializeParams } from "./params"
-import type { PartSpec } from "./parts"
+import { decodeParam, encodeParamKey, encodeParamValue } from "./codec.ts"
+import { parseHref, rawHref } from "./href.ts"
+import { type Param, serializeParams } from "./params.ts"
+import type { PartSpec } from "./parts.ts"
 
 export function editHref(base: string, raw: string): string | null {
 	if (raw === rawHref(new URL(base))) return base

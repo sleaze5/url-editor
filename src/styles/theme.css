@@ -1,0 +1,81 @@
+@theme {
+	--*: initial;
+
+	--color-bg: #f6f6f7;
+	--color-surface: #ffffff;
+	--color-hover: #eeeef0;
+	--color-raised: #ffffff;
+	--color-line: #dcdce0;
+	--color-line-strong: #c2c2c9;
+	--color-fg: #1b1b1f;
+	--color-fg-muted: #5f5f6a;
+	--color-fg-faint: #73737d;
+	--color-accent: #1f6feb;
+	--color-selection: rgb(31 111 235 / 20%);
+	--color-danger: #cf222e;
+	--color-primary: #1b1b1f;
+	--color-primary-hover: #34343b;
+	--color-on-primary: #ffffff;
+
+	--font-sans:
+		system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+	--font-mono:
+		ui-monospace, "SF Mono", "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas,
+		"DejaVu Sans Mono", "Liberation Mono", monospace;
+	--font-mono--font-feature-settings: "liga" 0, "calt" 0;
+
+	--font-weight-normal: 400;
+	--font-weight-medium: 500;
+	--font-weight-semibold: 600;
+
+	--text-xs: 11px;
+	--text-xs--line-height: 16px;
+	--text-sm: 12px;
+	--text-sm--line-height: 18px;
+	--text-base: 13px;
+	--text-base--line-height: 18px;
+
+	--spacing: 4px;
+
+	--radius-sm: 4px;
+	--radius-md: 6px;
+
+	--shadow-float: 0 4px 12px -2px rgb(0 0 0 / 16%), 0 1px 2px rgb(0 0 0 / 8%);
+
+	--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+	--default-transition-duration: 120ms;
+	--default-transition-timing-function: ease;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-bg: #161616;
+		--color-surface: #202020;
+		--color-hover: #292929;
+		--color-raised: #2c2c2c;
+		--color-line: #333333;
+		--color-line-strong: #474747;
+		--color-fg: #e8e8e8;
+		--color-fg-muted: #9e9e9e;
+		--color-fg-faint: #8c8c8c;
+		--color-accent: #6ea8fe;
+		--color-selection: rgb(110 168 254 / 28%);
+		--color-danger: #ff6b6b;
+		--color-primary: #ededed;
+		--color-primary-hover: #ffffff;
+		--color-on-primary: #161616;
+		--shadow-float: 0 6px 16px -4px rgb(0 0 0 / 60%), 0 1px 2px rgb(0 0 0 / 40%);
+	}
+}
+
+:root {
+	--width-popup: 440px;
+	--height-popup: 400px;
+	--height-control: 26px;
+	--press-scale: 0.97;
+	--enter-scale: 0.8;
+}
+
+@custom-variant tips-instant (:root.tips-instant &);
+@custom-variant windowed (:root.windowed &);
+@custom-variant dragging (&:where([data-dragging], [data-dragging] *));

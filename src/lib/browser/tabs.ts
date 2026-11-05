@@ -7,7 +7,7 @@ const SAMPLE_URL =
 	"https://user:pa%20ss@xn--mnchen-3ya.de:8443/a%20path/%C3%BC?q=hello%20world&tag=a&tag=b&flag#top"
 
 export const hasTabsApi = (): boolean =>
-	typeof chrome !== "undefined" && chrome.tabs !== undefined
+	typeof chrome !== "undefined" && "tabs" in chrome
 
 export const windowTabId = Number(
 	new URLSearchParams(location.search).get("tab") ?? Number.NaN,

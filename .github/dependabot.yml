@@ -1,0 +1,29 @@
+version: 2
+updates:
+    - package-ecosystem: github-actions
+      directories:
+          - /
+          - /.github/actions/*
+      schedule:
+          interval: weekly
+      ignore:
+          - dependency-name: "*"
+            update-types:
+                - version-update:semver-major
+      groups:
+          actions:
+              patterns:
+                  - "*"
+
+    - package-ecosystem: bun
+      directory: /
+      schedule:
+          interval: weekly
+      ignore:
+          - dependency-name: "*"
+            update-types:
+                - version-update:semver-major
+      groups:
+          packages:
+              patterns:
+                  - "*"

@@ -1,5 +1,5 @@
-import { decodeComponent, encodeRaw } from "./codec"
-import { toUnicodeHost } from "./punycode"
+import { decodeComponent, encodeRaw } from "./codec.ts"
+import { toUnicodeHost } from "./punycode.ts"
 
 const USERINFO_KEEP = ":@/\\?#"
 const PATH_KEEP = "/\\?#"

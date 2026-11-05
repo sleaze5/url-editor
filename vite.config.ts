@@ -1,6 +1,7 @@
 import { resolve } from "node:path"
 
-import { svelte } from "@sveltejs/vite-plugin-svelte"
+import solid from "@solidjs/vite-plugin"
+import tailwindcss from "@tailwindcss/vite"
 import { defineConfig, type Plugin } from "vite"
 
 import pkg from "./package.json" with { type: "json" }
@@ -31,17 +32,14 @@ export default defineConfig(({ mode }) => {
 		root: resolve(root, "src/popup"),
 		base: "./",
 		publicDir: resolve(root, "src/assets"),
-		plugins: [
-			svelte({ configFile: resolve(root, "svelte.config.js") }),
-			manifestPlugin(),
-			production && minifyDist(target),
-		],
+		plugins: [tailwindcss(), solid(), manifestPlugin(), production && minifyDist()],
+		css: { transformer: "lightningcss" },
 		build: {
 			outDir: resolve(root, "dist", `${pkg.name}-${browser}`),
 			emptyOutDir: true,
 			target,
 			cssTarget: target,
-			modulePreload: false,
+			modulePreload: { polyfill: false },
 			minify: production && "oxc",
 			cssMinify: production && "lightningcss",
 			sourcemap: production ? false : "inline",
@@ -50,5 +48,6 @@ export default defineConfig(({ mode }) => {
 				output: { comments: false },
 			},
 		},
+		server: { host: "127.0.0.1", port: 5173, strictPort: true },
 	}
 })

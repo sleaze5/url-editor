@@ -1,5 +1,5 @@
-import { decodeComponent, encodeRaw } from "./codec"
-import { toUnicodeHost } from "./punycode"
+import { decodeComponent, encodeRaw } from "./codec.ts"
+import { toUnicodeHost } from "./punycode.ts"
 
 export type PartId =
 	| "protocol"
