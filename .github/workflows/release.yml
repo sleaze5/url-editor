@@ -4,69 +4,86 @@ on:
     workflow_dispatch:
 
 permissions:
-    contents: write
+    contents: read
 
 concurrency:
     group: release
     cancel-in-progress: false
 
 jobs:
-    release:
+    prepare:
         runs-on: ubuntu-24.04-arm
-        timeout-minutes: 10
-        env:
-            GH_TOKEN: ${{ github.token }}
+        timeout-minutes: 5
+        outputs:
+            tag: ${{ steps.version.outputs.tag }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
-                  fetch-depth: 0
+                  persist-credentials: false
 
-            - uses: ./.github/actions/setup-bun
-
-            - name: Read version
-              id: meta
+            - id: version
               run: |
-                  name=$(bun -p 'require("./package.json").name')
-                  version=$(bun -p 'require("./package.json").version')
-                  tag="v$version"
-                  if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-                    echo "::error::$tag is already released. Bump the version in package.json first."
-                    exit 1
+                  set -euo pipefail
+                  if [ "$GITHUB_REF" != "refs/heads/$DEFAULT_BRANCH" ]; then
+                      echo "Run the release from $DEFAULT_BRANCH." >&2
+                      exit 1
                   fi
-                  echo "name=$name" >> "$GITHUB_OUTPUT"
+                  tag="v$(jq -r .version package.json)"
+                  if output=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" 2>&1); then
+                      echo "$tag is already released. Bump the version in package.json first." >&2
+                      exit 1
+                  elif ! grep -q "HTTP 404" <<< "$output"; then
+                      printf 'Could not check whether tag %s exists:\n%s\n' "$tag" "$output" >&2
+                      exit 1
+                  fi
                   echo "tag=$tag" >> "$GITHUB_OUTPUT"
-
-            - name: Check and build
-              run: bun run ci
-
-            - name: Package
               env:
-                  NAME: ${{ steps.meta.outputs.name }}
-                  TAG: ${{ steps.meta.outputs.tag }}
-              run: |
-                  for browser in chrome firefox; do
-                    (cd "dist/$NAME-$browser" && zip -qrX "$GITHUB_WORKSPACE/$NAME-$browser-$TAG.zip" .)
-                  done
+                  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+                  GH_TOKEN: ${{ github.token }}
 
-            - name: Release notes
-              run: |
-                  previous=$(git describe --tags --abbrev=0 2>/dev/null || true)
-                  range=${previous:+$previous..}HEAD
-                  url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
-                  {
-                    echo "## Commits"
-                    echo
-                    git log --no-merges --pretty="- %s ([%h]($url/commit/%H))" "$range"
-                  } > notes.md
+    check:
+        needs: prepare
+        uses: ./.github/workflows/check.yml
+
+    build:
+        needs: prepare
+        uses: ./.github/workflows/build.yml
+        with:
+            artifact: release-${{ needs.prepare.outputs.tag }}
+            retention-days: 1
+
+    publish:
+        needs: [prepare, check, build]
+        runs-on: ubuntu-24.04-arm
+        timeout-minutes: 10
+        permissions:
+            contents: write
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+                  fetch-depth: 0
+                  filter: blob:none
+
+            - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+              with:
+                  name: ${{ needs.build.outputs.artifact }}
+                  path: ${{ runner.temp }}/release
 
             - name: Publish
-              env:
-                  NAME: ${{ steps.meta.outputs.name }}
-                  TAG: ${{ steps.meta.outputs.tag }}
               run: |
-                  gh release create "$TAG" \
-                    "$NAME-chrome-$TAG.zip" \
-                    "$NAME-firefox-$TAG.zip" \
-                    --title "$TAG" \
-                    --notes-file notes.md \
-                    --target "$GITHUB_SHA"
+                  set -euo pipefail
+                  previous=$(git describe --tags --abbrev=0 2>/dev/null || true)
+                  url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+                  {
+                      echo "## Commits"
+                      echo
+                      git log --no-merges --pretty="- %s ([%h]($url/commit/%H))" "${previous:+$previous..}HEAD"
+                  } > "$RUNNER_TEMP/notes.md"
+                  gh release create "$TAG" "$RUNNER_TEMP"/release/*.zip \
+                      --title "$TAG" \
+                      --notes-file "$RUNNER_TEMP/notes.md" \
+                      --target "$GITHUB_SHA"
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  TAG: ${{ needs.prepare.outputs.tag }}

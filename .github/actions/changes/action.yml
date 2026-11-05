@@ -1,0 +1,47 @@
+name: Changes
+description: >-
+    Find which parts of the project the commits since the merge base with the base branch change: `app` for the extension source and its build and lint configuration, and `scripts` for the scripts in scripts/. Markdown and other prose select no part, because the format check runs on every change. Any other path, such as a workflow, an empty diff, and `all` select every part. Needs a checkout with history.
+
+inputs:
+    base:
+        description: The branch to compare with
+        required: true
+    all:
+        description: Select every part without looking at the diff
+        default: "false"
+
+outputs:
+    app:
+        description: Whether the extension source, its packages, or its configuration changed
+        value: ${{ steps.changes.outputs.app }}
+    scripts:
+        description: Whether the scripts in scripts/ changed
+        value: ${{ steps.changes.outputs.scripts }}
+
+runs:
+    using: composite
+    steps:
+        - id: changes
+          shell: bash
+          run: |
+              app=false scripts=false
+              select_all() { app=true scripts=true; }
+              if [ "$ALL" = true ]; then
+                  files=""
+              else
+                  files=$(git diff --name-only --no-renames "origin/$BASE...HEAD")
+              fi
+              [ -n "$files" ] || select_all
+              while IFS= read -r file; do
+                  case "$file" in
+                      "" | *.md | README | LICENSE | .gitignore | .editorconfig) ;;
+                      src/* | vite.config.ts | tsconfig.json | .oxlintrc.json) app=true ;;
+                      package.json | bun.lock | bunfig.toml) app=true scripts=true ;;
+                      scripts/*) scripts=true ;;
+                      *) select_all ;;
+                  esac
+              done <<< "$files"
+              printf 'app=%s\nscripts=%s\n' "$app" "$scripts" | tee -a "$GITHUB_OUTPUT"
+          env:
+              BASE: ${{ inputs.base }}
+              ALL: ${{ inputs.all }}
