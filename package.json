@@ -26,12 +26,14 @@
 		"build:chrome": "BROWSER=chrome vite build --mode production",
 		"build:firefox": "BROWSER=firefox vite build --mode production",
 		"typecheck": "tsc --noEmit",
+		"test": "bun test scripts",
 		"lint": "oxlint --type-aware --type-check --deny-warnings",
 		"lint:fix": "oxlint --type-aware --type-check --deny-warnings --fix",
 		"format": "bun fmt",
 		"format:check": "bun fmt --check",
-		"check": "bun run format:check && bun run lint && bun run typecheck",
+		"check": "bun run format:check && bun run lint && bun run typecheck && bun run test",
 		"fix": "bun run lint:fix && bun run format && bun run typecheck",
+		"deps:update": "bun scripts/deps/update.ts && bun install",
 		"ci": "bun run check && bun run build"
 	},
 	"dependencies": {

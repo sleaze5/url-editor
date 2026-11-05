@@ -65,8 +65,12 @@
 			}
 		},
 		{
-			"files": ["vite.config.ts", "src/build/**"],
+			"files": ["vite.config.ts", "src/build/**", "scripts/**"],
 			"env": { "browser": false, "node": true }
+		},
+		{
+			"files": ["scripts/**"],
+			"rules": { "no-console": "off" }
 		}
 	],
 	"ignorePatterns": ["dist/**", "node_modules/**"]

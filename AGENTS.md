@@ -18,6 +18,8 @@ A browser extension for Chrome and Firefox that parses the current tab's URL int
 - `src/styles`: `app.css` imports Tailwind, `theme.css` holds the tokens, `base.css` the element defaults.
 - `src/build`: the manifest and the post-build minifier used by `vite.config.ts`.
 - `src/assets`: icons copied into the build.
+- `scripts/deps`: the dependency updater that `deps.yml` runs, with its tests.
+- `.github`: the CI, cache, release, and dependency workflows. See [CI and releases](#ci-and-releases).
 
 ## Tasks
 
@@ -29,7 +31,9 @@ Run everything through `bun run <script>`. Bun is the only tool to install. `bun
 - `format`, `format:check`: `bun fmt` with the `[fmt]` options in `bunfig.toml`, which also sorts Tailwind classes.
 - `lint`, `lint:fix`: Oxlint with the rules in `.oxlintrc.json`. Warnings fail.
 - `typecheck`: `tsc --noEmit`.
-- `check`: `format:check`, `lint`, then `typecheck`. `fix`: `lint:fix`, `format`, then `typecheck`.
+- `test`: `bun test scripts`.
+- `deps:update`: update every package and the Bun version in `devEngines` with `scripts/deps/update.ts`, then `bun install`.
+- `check`: `format:check`, `lint`, `typecheck`, then `test`. `fix`: `lint:fix`, `format`, then `typecheck`.
 - `ci`: `check`, then `build`. CI and the release workflow run it.
 
 ## Rules
@@ -40,3 +44,19 @@ Run everything through `bun run <script>`. Bun is the only tool to install. `bun
 - Write signals from event handlers, `onSettled`, or effect callbacks, never from a component body or a memo. Reads lag writes until the next microtask, so compute the next value in a local variable instead of reading a signal back after setting it.
 - Import modules directly with their extension. Do not create barrel files.
 - Keep `src/lib` free of Solid and of DOM rendering.
+
+## CI and releases
+
+The workflows in `.github/workflows` are built from reusable workflows and composite actions in `.github/actions`, and run only what a change needs.
+
+- `ci.yml` runs on every push to a branch other than the default branch, on fork pull requests, and by hand. Pull requests from this repository skip it, because the push to their branch already ran it on the same commit. A newer push cancels the older run.
+    - `changes` runs the `changes` action. It compares the branch with its merge base on the default branch and selects the jobs whose inputs changed: `build` for `src/` and `vite.config.ts`, `code` (lint and typecheck) for `src/`, `scripts/`, and `.oxlintrc.json`, and `test` for `scripts/`. `tsconfig.json`, the packages, `bunfig.toml`, the workflows, the actions, any other unknown path, an empty diff, and a run by hand with `scope: all` select everything. Markdown and other prose select nothing.
+    - `check` calls `check.yml`. It always runs the format check, lints and typechecks when `code` is selected, and runs the tests when `test` is selected. The four checks share one job, because together they take about a second and each job costs several seconds of setup.
+    - `build` calls `build.yml` when `build` is selected, in parallel with `check`. It uploads the zipped Chrome and Firefox extensions, so every change can be installed and tried.
+    - `ci` passes only when every selected job passed and every other job was skipped. Require this check on the default branch.
+- `build.yml` caches `dist/` under a hash of every file the build reads. On a hit it skips Bun, the install, and the build, and only packages and uploads. Keep its key in step with the `build` paths in the `changes` action.
+- The `setup-bun` action installs the Bun version in `devEngines` in `package.json` and runs `bun install --frozen-lockfile`, restoring the Bun install cache. Only `cache.yml` saves that cache, so branch runs never spend time uploading it.
+- `cache.yml` warms the install and build caches on the default branch on every push to it, every week, and after a landed commit. A run can only restore the caches of its own branch and of the default branch.
+- `release.yml` runs by hand on the default branch and is never cancelled. It fails when the tag for the version in `package.json` exists, runs `check.yml` and `build.yml` in parallel, and publishes the zipped extensions from the build artifact as a GitHub release with the commits since the last tag.
+- `deps.yml` runs `scripts/deps/update.ts` every Monday. It moves every package and the Bun version in `devEngines` to its newest stable release, major versions included, and a prerelease along its own line (`2.0.0-rc.21` to `2.0.0-rc.22`) until a stable release of it exists. It skips releases newer than 7 days. It lands the commit with the `land` action: push to `deps/update`, run CI there, then push the same commit to the default branch and warm the caches. A commit that fails CI never lands.
+- Dependabot updates the GitHub Actions every week, major versions included, after a 7-day cooldown. `dependabot.yml` merges its pull request once CI passes on the exact commit it tested.

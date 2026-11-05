@@ -6,6 +6,14 @@ on:
             - main
     pull_request:
     workflow_dispatch:
+        inputs:
+            scope:
+                description: Check everything, or only the parts that the commits since the default branch change
+                type: choice
+                options:
+                    - all
+                    - changed
+                default: all
 
 permissions:
     contents: read
@@ -15,22 +23,54 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    check:
+    changes:
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork
         runs-on: ubuntu-24.04-arm
-        timeout-minutes: 10
+        timeout-minutes: 5
+        outputs:
+            build: ${{ steps.changes.outputs.build }}
+            code: ${{ steps.changes.outputs.code }}
+            test: ${{ steps.changes.outputs.test }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
                   persist-credentials: false
-            - uses: ./.github/actions/setup-bun
-            - run: bun run check
+                  fetch-depth: 0
+                  filter: blob:none
+            - id: changes
+              uses: ./.github/actions/changes
+              with:
+                  base: ${{ github.base_ref || github.event.repository.default_branch }}
+                  all: ${{ inputs.scope == 'all' }}
+
+    check:
+        needs: changes
+        uses: ./.github/workflows/check.yml
+        with:
+            code: ${{ needs.changes.outputs.code == 'true' }}
+            test: ${{ needs.changes.outputs.test == 'true' }}
 
     build:
-        runs-on: ubuntu-24.04-arm
-        timeout-minutes: 10
+        needs: changes
+        if: needs.changes.outputs.build == 'true'
+        uses: ./.github/workflows/build.yml
+        with:
+            artifact: url-editor-${{ github.sha }}
+
+    ci:
+        needs: [changes, check, build]
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork)
+        runs-on: ubuntu-slim
+        timeout-minutes: 5
         steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-              with:
-                  persist-credentials: false
-            - uses: ./.github/actions/setup-bun
-            - run: bun run build
+            - name: Require every selected job to pass and every other job to be skipped
+              run: |
+                  expected_build=skipped
+                  [ "$SELECTED" = true ] && expected_build=success
+                  printf 'changes: %s\ncheck: %s\nbuild: %s (expected %s)\n' "$CHANGES" "$CHECK" "$BUILD" "$expected_build"
+                  [ "$CHANGES" = success ] && [ "$CHECK" = success ] && [ "$BUILD" = "$expected_build" ]
+              env:
+                  SELECTED: ${{ needs.changes.outputs.build }}
+                  CHANGES: ${{ needs.changes.result }}
+                  CHECK: ${{ needs.check.result }}
+                  BUILD: ${{ needs.build.result }}

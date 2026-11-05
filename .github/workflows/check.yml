@@ -1,0 +1,38 @@
+name: Check
+
+on:
+    workflow_call:
+        inputs:
+            code:
+                description: Also lint and typecheck. The format check always runs.
+                type: boolean
+                default: true
+            test:
+                description: Also run the tests
+                type: boolean
+                default: true
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        name: Check
+        runs-on: ubuntu-24.04-arm
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: ./.github/actions/setup-bun
+            - name: Format
+              run: bun run format:check
+            - name: Lint
+              if: inputs.code
+              run: bun run lint
+            - name: Typecheck
+              if: inputs.code
+              run: bun run typecheck
+            - name: Test
+              if: inputs.test
+              run: bun run test
