@@ -1,6 +1,0 @@
-export * from "./codec"
-export * from "./edit"
-export * from "./href"
-export * from "./params"
-export * from "./parts"
-export * from "./punycode"

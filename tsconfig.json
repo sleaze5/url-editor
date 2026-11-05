@@ -1,23 +1,26 @@
 {
 	"compilerOptions": {
-		"target": "ES2022",
-		"lib": ["ES2023", "DOM", "DOM.Iterable"],
+		"target": "ESNext",
 		"module": "ESNext",
 		"moduleResolution": "bundler",
 		"moduleDetection": "force",
-		"types": ["chrome", "bun"],
-		"verbatimModuleSyntax": true,
-		"isolatedModules": true,
-		"allowImportingTsExtensions": true,
-		"resolveJsonModule": true,
-		"allowJs": true,
-		"checkJs": true,
+		"lib": ["ESNext", "DOM", "DOM.Iterable"],
+		"types": ["vite/client", "chrome", "bun"],
+		"jsx": "preserve",
+		"jsxImportSource": "@solidjs/web",
 		"noEmit": true,
 		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"allowImportingTsExtensions": true,
+		"allowArbitraryExtensions": true,
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true,
+		"erasableSyntaxOnly": true,
 
 		"strict": true,
-		"noUncheckedIndexedAccess": true,
 		"exactOptionalPropertyTypes": true,
+		"noUncheckedIndexedAccess": true,
+		"noUncheckedSideEffectImports": true,
 		"noImplicitOverride": true,
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true,
@@ -25,5 +28,5 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true
 	},
-	"include": ["src/**/*.ts", "src/**/*.svelte", "vite.config.ts", "svelte.config.js"]
+	"include": ["src", "scripts", "vite.config.ts"]
 }

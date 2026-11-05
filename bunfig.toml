@@ -1,0 +1,31 @@
+[install]
+linker = "isolated"
+exact = true
+saveTextLockfile = true
+
+[install.cache]
+disable = false
+
+[run]
+bun = true
+
+[fmt]
+printWidth = 88
+tabWidth = 4
+useTabs = true
+semi = false
+singleQuote = false
+jsxSingleQuote = false
+trailingComma = "all"
+endOfLine = "lf"
+arrowParens = "always"
+bracketSameLine = true
+bracketSpacing = true
+proseWrap = "never"
+htmlWhitespaceSensitivity = "css"
+objectWrap = "preserve"
+quoteProps = "consistent"
+singleAttributePerLine = false
+sortPackageJson = false
+sortTailwindcss = { stylesheet = "./src/styles/app.css" }
+ignorePatterns = ["dist/**", "node_modules/**"]

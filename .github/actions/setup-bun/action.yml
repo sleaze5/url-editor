@@ -1,0 +1,35 @@
+name: Setup Bun
+description: >-
+    Install the Bun version in devEngines in package.json and the packages in bun.lock, with the Bun install cache. Every job restores the cache, and only the default branch saves it, through `save` in cache.yml, so branch runs never spend time uploading it.
+
+inputs:
+    save:
+        description: Whether to save the install cache when it missed
+        default: "false"
+
+runs:
+    using: composite
+    steps:
+        - id: bun
+          shell: bash
+          run: echo "version=$(jq -r .devEngines.packageManager.version package.json)" >> "$GITHUB_OUTPUT"
+
+        - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+          with:
+              bun-version: ${{ steps.bun.outputs.version }}
+
+        - id: cache
+          uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+          with:
+              path: ~/.bun/install/cache
+              key: bun-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+              restore-keys: bun-${{ runner.os }}-${{ runner.arch }}-
+
+        - shell: bash
+          run: bun install --frozen-lockfile
+
+        - if: inputs.save == 'true' && steps.cache.outputs.cache-hit != 'true'
+          uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+          with:
+              path: ~/.bun/install/cache
+              key: ${{ steps.cache.outputs.cache-primary-key }}

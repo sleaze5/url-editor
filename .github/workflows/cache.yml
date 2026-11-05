@@ -1,0 +1,34 @@
+name: Warm caches
+
+on:
+    push:
+        branches:
+            - main
+    schedule:
+        - cron: 43 4 * * 3
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: cache
+    cancel-in-progress: true
+
+jobs:
+    packages:
+        runs-on: ubuntu-24.04-arm
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+            - uses: ./.github/actions/setup-bun
+              with:
+                  save: true
+
+    build:
+        uses: ./.github/workflows/build.yml
+        with:
+            artifact: url-editor-${{ github.sha }}
+            retention-days: 1

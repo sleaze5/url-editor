@@ -1,4 +1,4 @@
-import { type ActiveTab, findTab, hasTabsApi, isWindowed, windowTabId } from "./tabs"
+import { type ActiveTab, findTab, hasTabsApi, isWindowed, windowTabId } from "./tabs.ts"
 
 const keyOf = (tabId: number): string => `window:${tabId}`
 

@@ -1,4 +1,4 @@
-import type { ActiveTab } from "./tabs"
+import type { ActiveTab } from "./tabs.ts"
 
 interface Draft {
 	original: string
@@ -9,7 +9,7 @@ interface Draft {
 const VIEW_ID = crypto.randomUUID()
 
 const hasSessionStorage = (): boolean =>
-	typeof chrome !== "undefined" && chrome.storage?.session !== undefined
+	typeof chrome !== "undefined" && "storage" in chrome && "session" in chrome.storage
 
 const keyOf = (id: number): string => `draft:${id}`
 

@@ -1,34 +1,76 @@
 name: CI
 
 on:
+    push:
+        branches-ignore:
+            - main
     pull_request:
+    workflow_dispatch:
+        inputs:
+            scope:
+                description: Check everything, or only the parts that the commits since the default branch change
+                type: choice
+                options:
+                    - all
+                    - changed
+                default: all
+
+permissions:
+    contents: read
 
 concurrency:
-    group: ci-${{ github.event.pull_request.number }}
+    group: ci-${{ github.ref }}
     cancel-in-progress: true
 
 jobs:
-    verify:
-        runs-on: ubuntu-slim
-        timeout-minutes: 10
+    changes:
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork
+        runs-on: ubuntu-24.04-arm
+        timeout-minutes: 5
+        outputs:
+            build: ${{ steps.changes.outputs.build }}
+            code: ${{ steps.changes.outputs.code }}
+            test: ${{ steps.changes.outputs.test }}
         steps:
-            - uses: actions/checkout@v7
-
-            - uses: oven-sh/setup-bun@v2
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
               with:
-                  bun-version: latest
+                  persist-credentials: false
+                  fetch-depth: 0
+                  filter: blob:none
+            - id: changes
+              uses: ./.github/actions/changes
+              with:
+                  base: ${{ github.base_ref || github.event.repository.default_branch }}
+                  all: ${{ inputs.scope == 'all' }}
 
-            - name: Install
-              run: bun install --frozen-lockfile
+    check:
+        needs: changes
+        uses: ./.github/workflows/check.yml
+        with:
+            code: ${{ needs.changes.outputs.code == 'true' }}
+            test: ${{ needs.changes.outputs.test == 'true' }}
 
-            - name: Format
-              run: bun run format:check
+    build:
+        needs: changes
+        if: needs.changes.outputs.build == 'true'
+        uses: ./.github/workflows/build.yml
+        with:
+            artifact: url-editor-${{ github.sha }}
 
-            - name: Lint
-              run: bun run lint
-
-            - name: Type check
-              run: bun run check
-
-            - name: Build
-              run: bun run build
+    ci:
+        needs: [changes, check, build]
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork)
+        runs-on: ubuntu-slim
+        timeout-minutes: 5
+        steps:
+            - name: Require every selected job to pass and every other job to be skipped
+              run: |
+                  expected_build=skipped
+                  [ "$SELECTED" = true ] && expected_build=success
+                  printf 'changes: %s\ncheck: %s\nbuild: %s (expected %s)\n' "$CHANGES" "$CHECK" "$BUILD" "$expected_build"
+                  [ "$CHANGES" = success ] && [ "$CHECK" = success ] && [ "$BUILD" = "$expected_build" ]
+              env:
+                  SELECTED: ${{ needs.changes.outputs.build }}
+                  CHANGES: ${{ needs.changes.result }}
+                  CHECK: ${{ needs.check.result }}
+                  BUILD: ${{ needs.build.result }}

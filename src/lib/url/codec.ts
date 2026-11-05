@@ -46,14 +46,14 @@ function decodeRun(run: string, keep: string): string {
 export function decodeComponent(value: string, keep = ""): string {
 	if (!value.includes("%")) return value
 	return value
-		.replace(ENCODED_RUN, (run) => decodeRun(run, keep))
-		.replace(PERCENT_MARKS, (_, hex?: string) =>
+		.replaceAll(ENCODED_RUN, (run) => decodeRun(run, keep))
+		.replaceAll(PERCENT_MARKS, (_, hex?: string) =>
 			hex === undefined ? "%" : `%25${hex}`,
 		)
 }
 
 export function encodeRaw(raw: string): string {
-	return raw.replace(LINE_BREAKS, "").replace(BARE_PERCENT, "%25")
+	return raw.replaceAll(LINE_BREAKS, "").replaceAll(BARE_PERCENT, "%25")
 }
 
 // Everything the WHATWG query setter would escape, plus the given delimiters, so
@@ -63,7 +63,7 @@ function queryEncoder(delimiters: string): (raw: string) => string {
 		String.raw`%(?![\da-f]{2})|[^\x21-\x7E]|["#'<>${delimiters}]`,
 		"giu",
 	)
-	return (raw) => raw.replace(LINE_BREAKS, "").replace(pattern, encodeChar)
+	return (raw) => raw.replaceAll(LINE_BREAKS, "").replaceAll(pattern, encodeChar)
 }
 
 export const encodeParamKey = queryEncoder("&=+")
