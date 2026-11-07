@@ -10,8 +10,8 @@ export async function popOut(tab: ActiveTab): Promise<void> {
 	await chrome.windows.create({
 		url: chrome.runtime.getURL(`index.html?tab=${tab.id}`),
 		type: "popup",
-		width: cssSize("--popup-width"),
-		height: cssSize("--popup-height"),
+		width: cssSize("--width-popup"),
+		height: cssSize("--height-popup"),
 	})
 	window.close()
 }
@@ -40,9 +40,9 @@ async function fitToPopupSize(win: chrome.windows.Window): Promise<void> {
 	}
 	const scale = win.width / outerWidth
 	await chrome.windows.update(win.id, {
-		width: Math.round(win.width + (cssSize("--popup-width") - innerWidth) * scale),
+		width: Math.round(win.width + (cssSize("--width-popup") - innerWidth) * scale),
 		height: Math.round(
-			win.height + (cssSize("--popup-height") - innerHeight) * scale,
+			win.height + (cssSize("--height-popup") - innerHeight) * scale,
 		),
 	})
 }

@@ -68,6 +68,7 @@
 	}
 }
 
+/* src/lib/browser/windows.ts reads the popup size to open a window that matches it. */
 :root {
 	--width-popup: 440px;
 	--height-popup: 400px;
