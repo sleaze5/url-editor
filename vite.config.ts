@@ -5,11 +5,11 @@ import tailwindcss from "@tailwindcss/vite"
 import { defineConfig, type Plugin } from "vite"
 
 import pkg from "./package.json" with { type: "json" }
-import { type Browser, createManifest } from "./src/build/manifest.ts"
+import { type Browser, createManifest, MIN_VERSION } from "./src/build/manifest.ts"
 import { minifyDist } from "./src/build/minify.ts"
 
 const browser: Browser = process.env["BROWSER"] === "firefox" ? "firefox" : "chrome"
-const target = browser === "firefox" ? "firefox128" : "chrome120"
+const target = `${browser}${MIN_VERSION[browser]}`
 const root = import.meta.dirname
 
 function manifestPlugin(): Plugin {
@@ -20,7 +20,7 @@ function manifestPlugin(): Plugin {
 			this.emitFile({
 				type: "asset",
 				fileName: "manifest.json",
-				source: `${JSON.stringify(createManifest(browser, pkg.version), null, "\t")}\n`,
+				source: `${JSON.stringify(createManifest(browser, pkg), null, "\t")}\n`,
 			})
 		},
 	}
