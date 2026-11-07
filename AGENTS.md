@@ -31,7 +31,7 @@ Run everything through `bun run <script>`. Bun is the only tool to install. `bun
 - `format`, `format:check`: `bun fmt` with the `[fmt]` options in `bunfig.toml`, which also sorts Tailwind classes.
 - `lint`, `lint:fix`: Oxlint with the rules in `.oxlintrc.json`. Warnings fail.
 - `typecheck`: `tsc --noEmit`.
-- `test`: `bun test scripts`.
+- `test`: `bun test`, which runs every `*.test.ts`: the URL library tests in `src/lib/url` and the dependency updater tests in `scripts/deps`.
 - `deps:update`: update every package and the Bun version in `devEngines` with `scripts/deps/update.ts`, then `bun install`.
 - `check`: `format:check`, `lint`, `typecheck`, then `test`. `fix`: `lint:fix`, `format`, then `typecheck`.
 - `ci`: `check`, then `build`. CI and the release workflow run it.
@@ -45,13 +45,14 @@ Run everything through `bun run <script>`. Bun is the only tool to install. `bun
 - Write signals from event handlers, `onSettled`, or effect callbacks, never from a component body or a memo. Reads lag writes until the next microtask, so compute the next value in a local variable instead of reading a signal back after setting it.
 - Import modules directly with their extension. Do not create barrel files.
 - Keep `src/lib` free of Solid and of DOM rendering.
+- Put tests next to the module they test, as `<module>.test.ts`, and test through the module's exports.
 
 ## CI and releases
 
 The workflows in `.github/workflows` are built from reusable workflows and composite actions in `.github/actions`, and run only what a change needs.
 
 - `ci.yml` runs on every push to a branch other than the default branch, on fork pull requests, and by hand. Pull requests from this repository skip it, because the push to their branch already ran it on the same commit. A newer push cancels the older run.
-    - `changes` runs the `changes` action. It compares the branch with its merge base on the default branch and selects the jobs whose inputs changed: `build` for `src/` and `vite.config.ts`, `code` (lint and typecheck) for `src/`, `scripts/`, and `.oxlintrc.json`, and `test` for `scripts/`. `tsconfig.json`, the packages, `bunfig.toml`, the workflows, the actions, any other unknown path, an empty diff, and a run by hand with `scope: all` select everything. Markdown and other prose select nothing.
+    - `changes` runs the `changes` action. It compares the branch with its merge base on the default branch and selects the jobs whose inputs changed: `build` for `src/` and `vite.config.ts`, `code` (lint and typecheck) for `src/`, `scripts/`, and `.oxlintrc.json`, and `test` for `src/` and `scripts/`. `tsconfig.json`, the packages, `bunfig.toml`, the workflows, the actions, any other unknown path, an empty diff, and a run by hand with `scope: all` select everything. Markdown and other prose select nothing.
     - `check` calls `check.yml`. It always runs the format check, lints and typechecks when `code` is selected, and runs the tests when `test` is selected. The four checks share one job, because together they take about a second and each job costs several seconds of setup.
     - `build` calls `build.yml` when `build` is selected, in parallel with `check`. It uploads the zipped Chrome and Firefox extensions, so every change can be installed and tried.
     - `ci` passes only when every selected job passed and every other job was skipped. Require this check on the default branch.
