@@ -46,6 +46,11 @@ Run everything through `bun run <script>`. Bun is the only tool to install. `bun
 - Import modules directly with their extension. Do not create barrel files.
 - Keep `src/lib` free of Solid and of DOM rendering.
 - Put tests next to the module they test, as `<module>.test.ts`, and test through the module's exports.
+- Name everything for exactly what it holds or does, so that anyone reading the code understands what is happening without reading the implementation behind the name. Prefer a long, descriptive name to a short or vague one: `typedText`, not `raw`; `highlightedRowIndex`, not `active`; `textarea`, not `el`. This applies to every kind of name: functions, methods, variables, parameters, constants, module-level and local bindings, exports, types and interfaces and their fields, component props, and callback arguments.
+    - Name booleans as questions: `isWindowed`, `hasEqualsSign`, `wasBlocked`.
+    - Name a function for everything it does, side effects included: `prepareWindowAndDecideToRender`, not `prepareWindow`.
+    - Avoid single letters, abbreviations, and generic words such as `data`, `value`, `temp`, `next`, or `current`. The only exceptions are names that a specification defines, such as the RFC 3492 constants in `punycode.ts`, and `_` for a parameter that is never read.
+    - When a name stops matching what the code does, rename it everywhere it appears in the same change.
 
 ## CI and releases
 

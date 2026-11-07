@@ -25,8 +25,12 @@ function parseVersion(text: string): Version | undefined {
 	}
 }
 
-function compareStable(a: Version, b: Version): number {
-	return a.major - b.major || a.minor - b.minor || a.patch - b.patch
+function compareStable(firstVersion: Version, secondVersion: Version): number {
+	return (
+		firstVersion.major - secondVersion.major ||
+		firstVersion.minor - secondVersion.minor ||
+		firstVersion.patch - secondVersion.patch
+	)
 }
 
 function parsePrerelease(text: string | undefined): Prerelease | undefined {
