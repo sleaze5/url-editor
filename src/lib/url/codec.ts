@@ -1,7 +1,7 @@
 const ENCODED_RUN = /(?:%[\da-f]{2})+/giu
 const BARE_PERCENT = /%(?![\da-f]{2})/giu
 const LINE_BREAKS = /[\n\r]+/gu
-const INVISIBLE = /[\u00A0\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u2069\uE000\uFEFF]/u
+const INVISIBLE = /[\u00A0\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u2069\uFEFF]/u
 const FIRST_PRINTABLE = 0x20
 const DEL = 0x7f
 const PERCENT_MARK = "\uE000"
@@ -10,7 +10,7 @@ const PERCENT_MARKS = /\uE000([\da-f]{2})?/giu
 const utf8Decoder = new TextDecoder("utf-8", { fatal: true })
 const utf8Encoder = new TextEncoder()
 
-export function encodeChar(ch: string): string {
+function encodeChar(ch: string): string {
 	let out = ""
 	for (const byte of utf8Encoder.encode(ch)) {
 		out += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`
@@ -37,10 +37,14 @@ function decodeRun(run: string, keep: string): string {
 	let out = ""
 	for (const ch of text) {
 		if (ch === "%") out += PERCENT_MARK
-		else if (keep.includes(ch) || isInvisible(ch)) out += encodeChar(ch)
+		else if (keepsEncoded(ch, keep)) out += encodeChar(ch)
 		else out += ch
 	}
 	return out
+}
+
+function keepsEncoded(ch: string, keep: string): boolean {
+	return ch === PERCENT_MARK || keep.includes(ch) || isInvisible(ch)
 }
 
 export function decodeComponent(value: string, keep = ""): string {

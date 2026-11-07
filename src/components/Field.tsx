@@ -1,12 +1,11 @@
 import { createEffect, createSignal, createUniqueId, onSettled, Show } from "solid-js"
 
-export interface FieldProps {
-	id?: string
+interface FieldProps {
 	label: string
 	value: string
-	toRaw: () => string
+	/** The text to edit, when it differs from the value shown at rest. */
+	raw?: string
 	onEdit: (raw: string) => boolean
-	onSubmit?: () => void
 	placeholder?: string
 	autofocus?: boolean
 	error?: string | undefined
@@ -39,7 +38,7 @@ export function Field(props: FieldProps) {
 	}
 
 	function handleFocus(): void {
-		startRaw = props.toRaw()
+		startRaw = props.raw ?? props.value
 		setEditing(true)
 		setInvalid(false)
 		el.value = startRaw
@@ -62,9 +61,9 @@ export function Field(props: FieldProps) {
 	}
 
 	function handleKeyDown(event: KeyboardEvent): void {
+		// Enter opens the URL through the listener in App, unless cancelled here.
 		if (event.key === "Enter") {
-			event.preventDefault()
-			if (!invalid()) props.onSubmit?.()
+			if (invalid()) event.preventDefault()
 		} else if (event.key === "Escape" && el.value !== startRaw) {
 			event.preventDefault()
 			el.value = startRaw
@@ -78,7 +77,6 @@ export function Field(props: FieldProps) {
 				ref={(node) => {
 					el = node
 				}}
-				id={props.id}
 				rows={1}
 				spellcheck="false"
 				autocomplete="off"

@@ -2,14 +2,7 @@ import { decodeComponent, encodeRaw } from "./codec.ts"
 import { toUnicodeHost } from "./punycode.ts"
 
 export type PartId =
-	| "protocol"
-	| "username"
-	| "password"
-	| "hostname"
-	| "port"
-	| "pathname"
-	| "search"
-	| "hash"
+	"protocol" | "username" | "password" | "hostname" | "port" | "pathname" | "hash"
 
 export interface PartSpec {
 	id: PartId
@@ -22,12 +15,13 @@ export interface PartSpec {
 }
 
 const PATH_KEEP = "/\\"
-const QUERY_KEEP = "&=+"
 // The hash setter strips a leading "#".
 const HASH_KEEP = "#"
 
 const MAX_PORT = 65_535
 const PORT_PATTERN = /^\d{1,5}$/u
+
+const NEEDS_HOST: ReadonlySet<PartId> = new Set(["username", "password", "port"])
 
 function isValidPort(raw: string): boolean {
 	return raw === "" || (PORT_PATTERN.test(raw) && Number(raw) <= MAX_PORT)
@@ -39,28 +33,25 @@ function acceptsHost(url: URL, raw: string): boolean {
 }
 
 function textPart(
-	id: PartId,
+	id: "username" | "password" | "pathname" | "hash",
 	label: string,
-	options: {
-		read: (url: URL) => string
-		write: (url: URL, value: string) => void
-		keep?: string
-	},
+	options: { read?: (url: URL) => string; keep?: string } = {},
 ): PartSpec {
+	const read = options.read ?? ((url: URL) => url[id])
 	return {
 		id,
 		label,
-		encoded: options.read,
-		raw: (url) => decodeComponent(options.read(url), options.keep),
+		encoded: read,
+		raw: (url) => decodeComponent(read(url), options.keep),
 		apply: (url, raw) => {
-			options.write(url, encodeRaw(raw))
+			url[id] = encodeRaw(raw)
 			return true
 		},
 	}
 }
 
-export const PARTS: readonly PartSpec[] = [
-	{
+export const PARTS: Readonly<Record<PartId, PartSpec>> = {
+	protocol: {
 		id: "protocol",
 		label: "Protocol",
 		error: "Use a scheme such as https or ftp",
@@ -72,19 +63,9 @@ export const PARTS: readonly PartSpec[] = [
 			return url.protocol === `${scheme}:`
 		},
 	},
-	textPart("username", "Username", {
-		read: (url) => url.username,
-		write: (url, value) => {
-			url.username = value
-		},
-	}),
-	textPart("password", "Password", {
-		read: (url) => url.password,
-		write: (url, value) => {
-			url.password = value
-		},
-	}),
-	{
+	username: textPart("username", "Username"),
+	password: textPart("password", "Password"),
+	hostname: {
 		id: "hostname",
 		label: "Hostname",
 		error: "Not a valid hostname",
@@ -95,7 +76,7 @@ export const PARTS: readonly PartSpec[] = [
 			return acceptsHost(url, raw.trim())
 		},
 	},
-	{
+	port: {
 		id: "port",
 		label: "Port",
 		error: "Use a number from 0 to 65535",
@@ -108,33 +89,11 @@ export const PARTS: readonly PartSpec[] = [
 			return true
 		},
 	},
-	textPart("pathname", "Path", {
-		read: (url) => url.pathname,
-		write: (url, value) => {
-			url.pathname = value
-		},
-		keep: PATH_KEEP,
-	}),
-	textPart("search", "Query", {
-		read: (url) => url.search.slice(1),
-		write: (url, value) => {
-			url.search = value
-		},
-		keep: QUERY_KEEP,
-	}),
-	textPart("hash", "Hash", {
+	pathname: textPart("pathname", "Path", { keep: PATH_KEEP }),
+	hash: textPart("hash", "Hash", {
 		read: (url) => url.hash.slice(1),
-		write: (url, value) => {
-			url.hash = value
-		},
 		keep: HASH_KEEP,
 	}),
-]
-
-export function getPart(id: PartId): PartSpec {
-	const part = PARTS.find((candidate) => candidate.id === id)
-	if (!part) throw new Error(`Unknown URL part: ${id}`)
-	return part
 }
 
 export function isAvailable(id: PartId, url: URL): boolean {
@@ -142,8 +101,6 @@ export function isAvailable(id: PartId, url: URL): boolean {
 	if (id === "hostname") return url.href.startsWith(`${url.protocol}//`)
 	return true
 }
-
-const NEEDS_HOST: ReadonlySet<PartId> = new Set(["username", "password", "port"])
 
 export function isRequired(id: PartId): boolean {
 	return id === "protocol" || id === "pathname"

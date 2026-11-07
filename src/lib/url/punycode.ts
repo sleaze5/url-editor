@@ -49,7 +49,7 @@ function readDelta(input: string, cursor: Cursor, bias: number): number | null {
 	}
 }
 
-export function decodeLabel(input: string): string | null {
+function decodeLabel(input: string): string | null {
 	const basicEnd = Math.max(input.lastIndexOf("-"), 0)
 	const output = Array.from(input.slice(0, basicEnd), (ch) => ch.codePointAt(0) ?? 0)
 	const cursor: Cursor = { pos: basicEnd > 0 ? basicEnd + 1 : 0 }

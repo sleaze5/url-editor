@@ -1,11 +1,18 @@
-import { decodeParam, encodeParamKey, encodeParamValue } from "./codec.ts"
-import { parseHref, rawHref } from "./href.ts"
-import { type Param, serializeParams } from "./params.ts"
+import { decodeParam, encodeParamKey, encodeParamValue, encodeRaw } from "./codec.ts"
+import { BLANK_PARAM, type Param, serializeParams } from "./params.ts"
 import type { PartSpec } from "./parts.ts"
 
 export function editHref(base: string, raw: string): string | null {
-	if (raw === rawHref(new URL(base))) return base
-	return parseHref(raw)
+	if (raw === base) return base
+	const encoded = encodeRaw(raw)
+	return URL.canParse(encoded) ? new URL(encoded).href : null
+}
+
+export function editQuery(base: string, raw: string): string {
+	const url = new URL(base)
+	if (raw === url.search.slice(1)) return base
+	url.search = encodeRaw(raw)
+	return url.href
 }
 
 export function editPart(base: string, part: PartSpec, raw: string): string | null {
@@ -22,19 +29,17 @@ export interface ParamEdit {
 	raw: string
 }
 
-function encodeField(field: ParamField, raw: string): string {
-	return field === "key" ? encodeParamKey(raw) : encodeParamValue(raw)
-}
+const ENCODERS = { key: encodeParamKey, value: encodeParamValue }
 
 export function editParam(base: readonly Param[], edit: ParamEdit): Param[] {
 	const params = [...base]
-	const original = base[edit.index] ?? { key: "", value: "", hasValue: true }
-	const unchanged = edit.raw === decodeParam(original[edit.field])
-	const encoded = unchanged ? original[edit.field] : encodeField(edit.field, edit.raw)
+	const original = base[edit.index] ?? BLANK_PARAM
 	params[edit.index] = {
 		...original,
-		[edit.field]: encoded,
-		hasValue: original.hasValue || (edit.field === "value" && encoded !== ""),
+		[edit.field]:
+			edit.raw === decodeParam(original[edit.field])
+				? original[edit.field]
+				: ENCODERS[edit.field](edit.raw),
 	}
 	return params
 }

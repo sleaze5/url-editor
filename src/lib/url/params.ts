@@ -4,6 +4,8 @@ export interface Param {
 	hasValue: boolean
 }
 
+export const BLANK_PARAM: Readonly<Param> = { key: "", value: "", hasValue: true }
+
 export function parseParams(search: string): Param[] {
 	const query = search.startsWith("?") ? search.slice(1) : search
 	if (query === "") return []

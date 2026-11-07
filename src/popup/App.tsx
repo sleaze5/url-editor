@@ -26,17 +26,16 @@ import {
 	editHref,
 	editParam,
 	editPart,
+	editQuery,
 	type ParamEdit,
 	withParams,
 } from "../lib/url/edit.ts"
-import { moveParam, type Param, parseParams } from "../lib/url/params.ts"
+import { BLANK_PARAM, moveParam, type Param, parseParams } from "../lib/url/params.ts"
 import type { PartSpec } from "../lib/url/parts.ts"
 
 type Status = "loading" | "ready" | "unavailable" | "closed"
 
 const FAILED_MS = 5000
-
-const NOOP = (): void => {}
 
 function submitOnEnter(submit: () => void): (event: KeyboardEvent) => void {
 	return (event) => {
@@ -50,10 +49,8 @@ function submitOnEnter(submit: () => void): (event: KeyboardEvent) => void {
 export function App() {
 	const [tab, setTab] = createSignal<ActiveTab | null>(null)
 	const [status, setStatus] = createSignal<Status>("loading")
-	const [original, setOriginal] = createSignal("")
 	const [href, setHref] = createSignal("")
 	const [params, setParams] = createSignal<readonly Param[]>([])
-	const [focusIndex, setFocusIndex] = createSignal(-1)
 	const [failedHref, setFailedHref] = createSignal<string | null>(null)
 
 	const url = createMemo(() => (href() === "" ? null : new URL(href())))
@@ -70,7 +67,6 @@ export function App() {
 	})
 
 	let base: { href: string; params: readonly Param[] } = { href: "", params: [] }
-	let received = ""
 	let failedTimer: ReturnType<typeof setTimeout> | undefined
 
 	function load(next: string): void {
@@ -92,28 +88,25 @@ export function App() {
 		return commit(editPart(base.href, part, raw))
 	}
 
-	function editParamField(edit: ParamEdit): void {
-		const next = editParam(base.params, edit)
+	function updateParams(next: readonly Param[]): void {
 		setParams(next)
-		setHref(withParams(base.href, next))
+		setHref(withParams(href(), next))
+	}
+
+	function editParamField(edit: ParamEdit): void {
+		updateParams(editParam(base.params, edit))
 	}
 
 	function addParam(): void {
-		setFocusIndex(params().length)
-		setParams([...params(), { key: "", value: "", hasValue: true }])
+		setParams([...params(), BLANK_PARAM])
 	}
 
 	function reorderParam(from: number, to: number): void {
-		const next = moveParam(params(), from, to)
-		setParams(next)
-		setHref(withParams(href(), next))
+		updateParams(moveParam(params(), from, to))
 	}
 
 	function removeParam(index: number): void {
-		const next = params().filter((_, i) => i !== index)
-		setFocusIndex(-1)
-		setParams(next)
-		setHref(withParams(href(), next))
+		updateParams(params().filter((_, i) => i !== index))
 	}
 
 	function apply(): void {
@@ -133,7 +126,6 @@ export function App() {
 		const current = tab()
 		if (!current) return
 		setTab({ ...current, url: next })
-		setOriginal(next)
 		load(next)
 	}
 
@@ -145,7 +137,6 @@ export function App() {
 				return
 			}
 			setTab(current)
-			setOriginal(current.url)
 			load((await loadDraft(current)) ?? current.url)
 			setStatus("ready")
 		})()
@@ -160,15 +151,12 @@ export function App() {
 	createEffect(
 		() => [ready(), href()] as const,
 		([current, next]) => {
-			if (!current) return
-			if (next === received) received = ""
-			else void saveDraft(current, next)
+			if (current) void saveDraft(current, next)
 		},
 	)
 
 	function watch(current: ActiveTab): () => void {
 		const stopDraft = watchDraft(current, (next) => {
-			received = next
 			if (next !== href()) load(next)
 		})
 		const stopTab = watchTab(current, {
@@ -183,7 +171,7 @@ export function App() {
 		}
 	}
 
-	createEffect(ready, (current) => (current ? watch(current) : NOOP))
+	createEffect(ready, (current) => (current ? watch(current) : undefined))
 
 	return (
 		<div
@@ -202,25 +190,19 @@ export function App() {
 							<>
 								<UrlBar
 									href={href()}
-									toRaw={() => href()}
 									onEdit={(raw) => commit(editHref(base.href, raw))}
-									onSubmit={apply}
 								/>
-								<PartsEditor
-									url={current()}
-									onEdit={editUrlPart}
-									onSubmit={apply}
-								/>
+								<PartsEditor url={current()} onEdit={editUrlPart} />
 								<ParamsEditor
 									url={current()}
 									params={params()}
-									focusIndex={focusIndex()}
-									onQueryEdit={editUrlPart}
+									onQueryEdit={(raw) =>
+										commit(editQuery(base.href, raw))
+									}
 									onEdit={editParamField}
 									onAdd={addParam}
 									onMove={reorderParam}
 									onRemove={removeParam}
-									onSubmit={apply}
 								/>
 							</>
 						)}
@@ -234,10 +216,11 @@ export function App() {
 			</main>
 			<Show when={url() && status() !== "closed"}>
 				<ActionBar
-					dirty={href() !== original()}
+					dirty={href() !== tab()?.url}
 					failed={failedHref() === href()}
 					onReset={() => {
-						load(original())
+						const current = tab()
+						if (current) load(current.url)
 					}}
 					onApply={apply}
 				/>

@@ -6,25 +6,19 @@ import { createMemo, createSignal, flush, For, onSettled, Show } from "solid-js"
 import { decodeParam } from "../lib/url/codec.ts"
 import type { ParamEdit, ParamField } from "../lib/url/edit.ts"
 import type { Param } from "../lib/url/params.ts"
-import { getPart, type PartSpec } from "../lib/url/parts.ts"
 import { Field } from "./Field.tsx"
 import { IconButton } from "./IconButton.tsx"
 import { Tooltip } from "./Tooltip.tsx"
-import { tooltipAnchor } from "./tooltip-anchor.ts"
 
 interface ParamsEditorProps {
 	url: URL
 	params: readonly Param[]
-	focusIndex: number
-	onQueryEdit: (part: PartSpec, raw: string) => boolean
+	onQueryEdit: (raw: string) => boolean
 	onEdit: (edit: ParamEdit) => void
 	onMove: (from: number, to: number) => void
 	onAdd: () => void
 	onRemove: (index: number) => void
-	onSubmit: () => void
 }
-
-const query = getPart("search")
 
 const isBlank = (param: Param): boolean => param.key === "" && param.value === ""
 
@@ -32,6 +26,7 @@ export function ParamsEditor(props: ParamsEditorProps) {
 	const rows: HTMLElement[] = []
 	const [queryOpened, setQueryOpened] = createSignal(false)
 	const [active, setActive] = createSignal(-1)
+	const [focusIndex, setFocusIndex] = createSignal(-1)
 	const showQuery = createMemo(() => queryOpened() || props.url.search !== "")
 	let dragging = -1
 	let pressing = false
@@ -51,10 +46,6 @@ export function ParamsEditor(props: ParamsEditorProps) {
 		}
 	})
 
-	function submit(): void {
-		props.onSubmit()
-	}
-
 	function editor(index: number, field: ParamField): (raw: string) => boolean {
 		return (raw) => {
 			props.onEdit({ index, field, raw })
@@ -64,20 +55,29 @@ export function ParamsEditor(props: ParamsEditorProps) {
 
 	function add(): void {
 		const blank = props.params.findIndex((param) => isBlank(param))
-		if (blank === -1) props.onAdd()
-		else rows[blank]?.querySelector("textarea")?.focus()
+		if (blank === -1) {
+			setFocusIndex(props.params.length)
+			props.onAdd()
+		} else {
+			rows[blank]?.querySelector("textarea")?.focus()
+		}
+	}
+
+	function remove(index: number): void {
+		setFocusIndex(-1)
+		props.onRemove(index)
 	}
 
 	function removeBlank(): void {
 		const index = props.params.findIndex((param) => isBlank(param))
-		if (index !== -1 && !rows[index]?.contains(document.activeElement)) {
-			props.onRemove(index)
-		}
+		if (index === -1 || rows[index]?.contains(document.activeElement)) return
+		remove(index)
 	}
 
 	function closeIfBlank(event: FocusEvent, index: number): void {
 		const target = event.relatedTarget
 		if (target instanceof Node && rows[index]?.contains(target)) return
+		// Removing the row mid-press would shift the pressed button before its click lands.
 		if (pressing) {
 			window.addEventListener(
 				"pointerup",
@@ -155,10 +155,8 @@ export function ParamsEditor(props: ParamsEditorProps) {
 						</span>
 						<Field
 							label="Query string"
-							value={query.encoded(props.url)}
-							toRaw={() => query.encoded(props.url)}
-							onEdit={(raw) => props.onQueryEdit(query, raw)}
-							onSubmit={submit}
+							value={props.url.search.slice(1)}
+							onEdit={props.onQueryEdit}
 						/>
 					</label>
 				</div>
@@ -207,7 +205,6 @@ export function ParamsEditor(props: ParamsEditorProps) {
 						<button
 							type="button"
 							data-grip
-							ref={tooltipAnchor}
 							aria-label={`Move parameter ${index + 1}`}
 							aria-describedby="grip-hint"
 							onPointerDown={(event) => {
@@ -231,25 +228,23 @@ export function ParamsEditor(props: ParamsEditorProps) {
 							label={`Parameter ${index + 1} name`}
 							placeholder="name…"
 							value={param().key}
-							toRaw={() => decodeParam(param().key)}
+							raw={decodeParam(param().key)}
 							onEdit={editor(index, "key")}
-							autofocus={index === props.focusIndex}
-							onSubmit={submit}
+							autofocus={index === focusIndex()}
 						/>
 						<Field
 							label={`Parameter ${index + 1} value`}
 							placeholder="value…"
 							value={param().value}
-							toRaw={() => decodeParam(param().value)}
+							raw={decodeParam(param().value)}
 							onEdit={editor(index, "value")}
-							onSubmit={submit}
 						/>
 						<IconButton
 							icon={X}
 							label={`Remove parameter ${index + 1}`}
 							tip="Remove"
 							onClick={() => {
-								props.onRemove(index)
+								remove(index)
 							}}
 						/>
 					</div>

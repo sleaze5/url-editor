@@ -8,9 +8,7 @@ import { IconButton } from "./IconButton.tsx"
 
 interface UrlBarProps {
 	href: string
-	toRaw: () => string
 	onEdit: (raw: string) => boolean
-	onSubmit: () => void
 }
 
 type CopyState = "idle" | "done" | "failed"
@@ -45,11 +43,7 @@ export function UrlBar(props: UrlBarProps) {
 				<Field
 					label="Full URL"
 					value={props.href}
-					toRaw={() => props.toRaw()}
-					onEdit={(raw) => props.onEdit(raw)}
-					onSubmit={() => {
-						props.onSubmit()
-					}}
+					onEdit={props.onEdit}
 					error="Not a complete URL; include a scheme such as https://"
 				/>
 			</label>

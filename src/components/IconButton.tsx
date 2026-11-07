@@ -2,7 +2,6 @@ import type { LucideProps } from "@lucide/solid"
 import { type Component, createSignal, onSettled, Show } from "solid-js"
 
 import { Tooltip } from "./Tooltip.tsx"
-import { tooltipAnchor } from "./tooltip-anchor.ts"
 
 interface IconButtonProps {
 	icon: Component<LucideProps>
@@ -21,7 +20,6 @@ export function IconButton(props: IconButtonProps) {
 		<button
 			type="button"
 			aria-label={props.label}
-			ref={tooltipAnchor}
 			onClick={() => {
 				props.onClick()
 			}}

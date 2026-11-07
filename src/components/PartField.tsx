@@ -3,17 +3,15 @@ import { createMemo, createSignal, Show } from "solid-js"
 import type { PartSpec } from "../lib/url/parts.ts"
 import { Field } from "./Field.tsx"
 import { Tooltip } from "./Tooltip.tsx"
-import { tooltipAnchor } from "./tooltip-anchor.ts"
 
 interface PartFieldProps {
 	part: PartSpec
 	url: URL
 	onEdit: (part: PartSpec, raw: string) => boolean
-	onSubmit: () => void
-	onFocus?: () => void
-	onBlur?: () => void
-	autofocus?: boolean
-	errorAlign?: "start" | "end"
+	onFocus: () => void
+	onBlur: () => void
+	autofocus: boolean
+	errorAlign: "start" | "end"
 }
 
 export function PartField(props: PartFieldProps) {
@@ -32,10 +30,10 @@ export function PartField(props: PartFieldProps) {
 			<label
 				class="flex flex-col gap-0.5"
 				onFocusIn={() => {
-					props.onFocus?.()
+					props.onFocus()
 				}}
 				onFocusOut={() => {
-					props.onBlur?.()
+					props.onBlur()
 				}}>
 				<span class="block pl-px text-xs font-medium text-fg-muted select-none">
 					{props.part.label}
@@ -43,20 +41,16 @@ export function PartField(props: PartFieldProps) {
 				<Field
 					label={props.part.label}
 					value={value()}
-					toRaw={() => (flippable() ? value() : props.part.raw(props.url))}
+					raw={flippable() ? value() : props.part.raw(props.url)}
 					onEdit={(raw) => props.onEdit(props.part, raw)}
 					error={props.part.error}
-					errorAlign={props.errorAlign ?? "start"}
-					onSubmit={() => {
-						props.onSubmit()
-					}}
-					autofocus={props.autofocus ?? false}
+					errorAlign={props.errorAlign}
+					autofocus={props.autofocus}
 				/>
 			</label>
 			<Show when={canFlip()}>
 				<button
 					type="button"
-					ref={tooltipAnchor}
 					aria-pressed={unicode() ? "true" : "false"}
 					onClick={() => {
 						setUnicode((on) => !on)

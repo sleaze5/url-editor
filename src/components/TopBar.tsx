@@ -31,9 +31,7 @@ export function TopBar(props: TopBarProps) {
 						<IconButton
 							icon={View}
 							label="Switch to the tab"
-							onClick={() => {
-								focusTab()()
-							}}
+							onClick={focusTab()}
 						/>
 					)}
 				</Show>
@@ -42,9 +40,7 @@ export function TopBar(props: TopBarProps) {
 						<IconButton
 							icon={PictureInPicture2}
 							label="Open in a window"
-							onClick={() => {
-								popOut()()
-							}}
+							onClick={popOut()}
 						/>
 					)}
 				</Show>
