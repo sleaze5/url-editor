@@ -1,4 +1,4 @@
-export interface Version {
+interface Version {
 	major: number
 	minor: number
 	patch: number
@@ -13,7 +13,7 @@ interface Prerelease {
 const VERSION = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/u
 const PRERELEASE = /^([A-Za-z-]+)\.(\d+)$/u
 
-export function parseVersion(text: string): Version | undefined {
+function parseVersion(text: string): Version | undefined {
 	const match = VERSION.exec(text)
 	if (match === null) return undefined
 	const [, major, minor, patch, prerelease] = match

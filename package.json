@@ -26,7 +26,7 @@
 		"build:chrome": "BROWSER=chrome vite build --mode production",
 		"build:firefox": "BROWSER=firefox vite build --mode production",
 		"typecheck": "tsc --noEmit",
-		"test": "bun test scripts",
+		"test": "bun test",
 		"lint": "oxlint --type-aware --type-check --deny-warnings",
 		"lint:fix": "oxlint --type-aware --type-check --deny-warnings --fix",
 		"format": "bun fmt",

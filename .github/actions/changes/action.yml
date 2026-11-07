@@ -1,6 +1,6 @@
 name: Changes
 description: >-
-    Find which jobs the commits since the merge base with the base branch affect, from the files each job reads: `build` for the extension build, `code` for lint and typecheck, and `test` for the tests. Markdown and other prose select nothing, because the format check runs on every change. Any other path, such as a workflow or an action, an empty diff, and `all` select everything. Needs a checkout with history. Keep the `build` paths in step with the cache key in build.yml.
+    Find which jobs the commits since the merge base with the base branch affect, from the files each job reads: `build` for the extension build, `code` for lint and typecheck, and `test` for the tests in `src/` and `scripts/`. Markdown and other prose select nothing, because the format check runs on every change. Any other path, such as a workflow or an action, an empty diff, and `all` select everything. Needs a checkout with history. Keep the `build` paths in step with the cache key in build.yml.
 
 inputs:
     base:
@@ -38,10 +38,10 @@ runs:
               while IFS= read -r file; do
                   case "$file" in
                       "" | *.md | README | LICENSE | .gitignore | .editorconfig) ;;
-                      src/* | vite.config.ts) build=true code=true ;;
+                      src/*) build=true code=true test=true ;;
+                      vite.config.ts) build=true code=true ;;
                       scripts/*) code=true test=true ;;
                       .oxlintrc.json) code=true ;;
-                      tsconfig.json | package.json | bun.lock | bunfig.toml) select_all ;;
                       *) select_all ;;
                   esac
               done <<< "$files"
