@@ -1,78 +1,100 @@
-const ENCODED_RUN = /(?:%[\da-f]{2})+/giu
-const BARE_PERCENT = /%(?![\da-f]{2})/giu
+const PERCENT_ESCAPE_RUN = /(?:%[\da-f]{2})+/giu
+const PERCENT_WITHOUT_HEX_DIGITS = /%(?![\da-f]{2})/giu
 const LINE_BREAKS = /[\n\r]+/gu
-const INVISIBLE = /[\u00A0\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u2069\uFEFF]/u
-const FIRST_PRINTABLE = 0x20
-const DEL = 0x7f
-const PERCENT_MARK = "\uE000"
-const PERCENT_MARKS = /\uE000([\da-f]{2})?/giu
+const INVISIBLE_CHARACTERS =
+	/[\u00A0\u00AD\u200B-\u200F\u2028-\u202E\u2060-\u2069\uFEFF]/u
+const FIRST_PRINTABLE_CODE_POINT = 0x20
+const DELETE_CODE_POINT = 0x7f
+const DECODED_PERCENT_PLACEHOLDER = "\uE000"
+const PLACEHOLDER_WITH_FOLLOWING_HEX = /\uE000([\da-f]{2})?/giu
 
-const utf8Decoder = new TextDecoder("utf-8", { fatal: true })
+const strictUtf8Decoder = new TextDecoder("utf-8", { fatal: true })
 const utf8Encoder = new TextEncoder()
 
-function encodeChar(ch: string): string {
-	let out = ""
-	for (const byte of utf8Encoder.encode(ch)) {
-		out += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`
+function percentEncodeCharacter(character: string): string {
+	let escapes = ""
+	for (const byte of utf8Encoder.encode(character)) {
+		escapes += `%${byte.toString(16).toUpperCase().padStart(2, "0")}`
 	}
-	return out
+	return escapes
 }
 
-function isInvisible(ch: string): boolean {
-	const code = ch.codePointAt(0) ?? 0
-	return code < FIRST_PRINTABLE || code === DEL || INVISIBLE.test(ch)
+function isInvisibleCharacter(character: string): boolean {
+	const codePoint = character.codePointAt(0) ?? 0
+	return (
+		codePoint < FIRST_PRINTABLE_CODE_POINT ||
+		codePoint === DELETE_CODE_POINT ||
+		INVISIBLE_CHARACTERS.test(character)
+	)
 }
 
-function decodeRun(run: string, keep: string): string {
-	const bytes = new Uint8Array(run.length / 3)
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = Number.parseInt(run.slice(i * 3 + 1, i * 3 + 3), 16)
+function shouldStayEncoded(character: string, keepEncoded: string): boolean {
+	return (
+		character === DECODED_PERCENT_PLACEHOLDER ||
+		keepEncoded.includes(character) ||
+		isInvisibleCharacter(character)
+	)
+}
+
+function decodeEscapeRun(escapeRun: string, keepEncoded: string): string {
+	const bytes = new Uint8Array(escapeRun.length / 3)
+	for (let byteIndex = 0; byteIndex < bytes.length; byteIndex++) {
+		const hexStart = byteIndex * 3 + 1
+		bytes[byteIndex] = Number.parseInt(escapeRun.slice(hexStart, hexStart + 2), 16)
 	}
-	let text: string
+	let decodedText: string
 	try {
-		text = utf8Decoder.decode(bytes)
+		decodedText = strictUtf8Decoder.decode(bytes)
 	} catch {
-		return run
+		return escapeRun
 	}
-	let out = ""
-	for (const ch of text) {
-		if (ch === "%") out += PERCENT_MARK
-		else if (keepsEncoded(ch, keep)) out += encodeChar(ch)
-		else out += ch
+	let decodedRun = ""
+	for (const character of decodedText) {
+		if (character === "%") decodedRun += DECODED_PERCENT_PLACEHOLDER
+		else if (shouldStayEncoded(character, keepEncoded)) {
+			decodedRun += percentEncodeCharacter(character)
+		} else decodedRun += character
 	}
-	return out
+	return decodedRun
 }
 
-function keepsEncoded(ch: string, keep: string): boolean {
-	return ch === PERCENT_MARK || keep.includes(ch) || isInvisible(ch)
-}
-
-export function decodeComponent(value: string, keep = ""): string {
-	if (!value.includes("%")) return value
-	return value
-		.replaceAll(ENCODED_RUN, (run) => decodeRun(run, keep))
-		.replaceAll(PERCENT_MARKS, (_, hex?: string) =>
-			hex === undefined ? "%" : `%25${hex}`,
+/** Decodes percent escapes, except the characters in `keepEncoded`, invisible characters, and invalid UTF-8. */
+export function decodeComponent(encodedComponent: string, keepEncoded = ""): string {
+	if (!encodedComponent.includes("%")) return encodedComponent
+	return encodedComponent
+		.replaceAll(PERCENT_ESCAPE_RUN, (escapeRun) =>
+			decodeEscapeRun(escapeRun, keepEncoded),
+		)
+		.replaceAll(
+			PLACEHOLDER_WITH_FOLLOWING_HEX,
+			(_placeholder, followingHex?: string) =>
+				followingHex === undefined ? "%" : `%25${followingHex}`,
 		)
 }
 
-export function encodeRaw(raw: string): string {
-	return raw.replaceAll(LINE_BREAKS, "").replaceAll(BARE_PERCENT, "%25")
+/** Prepares text the user typed for a URL setter, which encodes everything else itself. */
+export function encodeTypedText(typedText: string): string {
+	return typedText
+		.replaceAll(LINE_BREAKS, "")
+		.replaceAll(PERCENT_WITHOUT_HEX_DIGITS, "%25")
 }
 
 // Everything the WHATWG query setter would escape, plus the given delimiters, so
 // setting `search` never rewrites an already-encoded param.
-function queryEncoder(delimiters: string): (raw: string) => string {
-	const pattern = new RegExp(
+function createQueryEncoder(delimiters: string): (typedText: string) => string {
+	const charactersToEscape = new RegExp(
 		String.raw`%(?![\da-f]{2})|[^\x21-\x7E]|["#'<>${delimiters}]`,
 		"giu",
 	)
-	return (raw) => raw.replaceAll(LINE_BREAKS, "").replaceAll(pattern, encodeChar)
+	return (typedText) =>
+		typedText
+			.replaceAll(LINE_BREAKS, "")
+			.replaceAll(charactersToEscape, percentEncodeCharacter)
 }
 
-export const encodeParamKey = queryEncoder("&=+")
-export const encodeParamValue = queryEncoder("&+")
+export const encodeParamKey = createQueryEncoder("&=+")
+export const encodeParamValue = createQueryEncoder("&+")
 
-export function decodeParam(value: string): string {
-	return decodeComponent(value.replaceAll("+", " "))
+export function decodeParam(encodedParam: string): string {
+	return decodeComponent(encodedParam.replaceAll("+", " "))
 }

@@ -1,50 +1,53 @@
-export interface ActiveTab {
+/** The tab whose URL this view edits. */
+export interface EditedTab {
 	id: number | undefined
 	url: string
 }
 
-const SAMPLE_URL =
+const DEV_SERVER_SAMPLE_URL =
 	"https://user:pa%20ss@xn--mnchen-3ya.de:8443/a%20path/%C3%BC?q=hello%20world&tag=a&tag=b&flag#top"
 
 export const hasTabsApi = (): boolean =>
 	typeof chrome !== "undefined" && "tabs" in chrome
 
-export const windowTabId = Number(
+/** The tab a popped-out window edits, from its `?tab=` parameter; NaN in the toolbar popup. */
+export const windowedTabId = Number(
 	new URLSearchParams(location.search).get("tab") ?? Number.NaN,
 )
 
-export const isWindowed = Number.isInteger(windowTabId)
+/** Whether this view is a popped-out window rather than the toolbar popup. */
+export const isWindowed = Number.isInteger(windowedTabId)
 
-function devTab(): ActiveTab {
+function devServerTab(): EditedTab {
 	return {
 		id: undefined,
-		url: new URLSearchParams(location.search).get("url") ?? SAMPLE_URL,
+		url: new URLSearchParams(location.search).get("url") ?? DEV_SERVER_SAMPLE_URL,
 	}
 }
 
-function toActiveTab(tab: chrome.tabs.Tab | undefined): ActiveTab | null {
-	const url = tab?.url ?? tab?.pendingUrl ?? ""
-	return tab && url !== "" ? { id: tab.id, url } : null
+function toEditedTab(browserTab: chrome.tabs.Tab | undefined): EditedTab | null {
+	const url = browserTab?.url ?? browserTab?.pendingUrl ?? ""
+	return browserTab && url !== "" ? { id: browserTab.id, url } : null
 }
 
-export async function findTab(): Promise<chrome.tabs.Tab | undefined> {
+export async function findEditedBrowserTab(): Promise<chrome.tabs.Tab | undefined> {
 	if (isWindowed) {
 		try {
-			return await chrome.tabs.get(windowTabId)
+			return await chrome.tabs.get(windowedTabId)
 		} catch {
 			return undefined
 		}
 	}
-	const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-	return tab
+	const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+	return activeTab
 }
 
-export async function getActiveTab(): Promise<ActiveTab | null> {
-	if (!hasTabsApi()) return devTab()
-	return toActiveTab(await findTab())
+export async function getEditedTab(): Promise<EditedTab | null> {
+	if (!hasTabsApi()) return devServerTab()
+	return toEditedTab(await findEditedBrowserTab())
 }
 
-export async function navigate(tab: ActiveTab, url: string): Promise<void> {
+export async function navigateTab(tab: EditedTab, url: string): Promise<void> {
 	if (!hasTabsApi()) {
 		location.search = `?url=${encodeURIComponent(url)}`
 		return
@@ -55,24 +58,26 @@ export async function navigate(tab: ActiveTab, url: string): Promise<void> {
 	if (!isWindowed) window.close()
 }
 
-export interface TabWatcher {
-	onurl: (url: string) => void
-	onclose: () => void
+export interface TabListeners {
+	onUrlChange: (url: string) => void
+	onClose: () => void
 }
 
-export function watchTab(tab: ActiveTab, watcher: TabWatcher): () => void {
+export function watchTab(tab: EditedTab, listeners: TabListeners): () => void {
 	if (tab.id === undefined || !hasTabsApi()) return () => {}
-	const { id } = tab
-	const updated = (tabId: number, change: { url?: string }): void => {
-		if (tabId === id && change.url !== undefined) watcher.onurl(change.url)
+	const watchedTabId = tab.id
+	const handleTabUpdated = (tabId: number, change: { url?: string }): void => {
+		if (tabId === watchedTabId && change.url !== undefined) {
+			listeners.onUrlChange(change.url)
+		}
 	}
-	const removed = (tabId: number): void => {
-		if (tabId === id) watcher.onclose()
+	const handleTabRemoved = (tabId: number): void => {
+		if (tabId === watchedTabId) listeners.onClose()
 	}
-	chrome.tabs.onUpdated.addListener(updated)
-	chrome.tabs.onRemoved.addListener(removed)
+	chrome.tabs.onUpdated.addListener(handleTabUpdated)
+	chrome.tabs.onRemoved.addListener(handleTabRemoved)
 	return () => {
-		chrome.tabs.onUpdated.removeListener(updated)
-		chrome.tabs.onRemoved.removeListener(removed)
+		chrome.tabs.onUpdated.removeListener(handleTabUpdated)
+		chrome.tabs.onRemoved.removeListener(handleTabRemoved)
 	}
 }

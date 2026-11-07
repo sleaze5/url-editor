@@ -1,50 +1,63 @@
-import { decodeParam, encodeParamKey, encodeParamValue, encodeRaw } from "./codec.ts"
+import {
+	decodeParam,
+	encodeParamKey,
+	encodeParamValue,
+	encodeTypedText,
+} from "./codec.ts"
 import { BLANK_PARAM, type Param, serializeParams } from "./params.ts"
-import type { PartSpec } from "./parts.ts"
+import type { UrlPart } from "./parts.ts"
 
-export function editHref(base: string, raw: string): string | null {
-	if (raw === base) return base
-	const encoded = encodeRaw(raw)
-	return URL.canParse(encoded) ? new URL(encoded).href : null
+// Each edit starts from the URL as it was when the field took focus, so that typing and
+// then undoing the typing gives back exactly that URL.
+
+export function editHref(baseHref: string, typedHref: string): string | null {
+	if (typedHref === baseHref) return baseHref
+	const encodedHref = encodeTypedText(typedHref)
+	return URL.canParse(encodedHref) ? new URL(encodedHref).href : null
 }
 
-export function editQuery(base: string, raw: string): string {
-	const url = new URL(base)
-	if (raw === url.search.slice(1)) return base
-	url.search = encodeRaw(raw)
+export function editQuery(baseHref: string, typedQuery: string): string {
+	const url = new URL(baseHref)
+	if (typedQuery === url.search.slice(1)) return baseHref
+	url.search = encodeTypedText(typedQuery)
 	return url.href
 }
 
-export function editPart(base: string, part: PartSpec, raw: string): string | null {
-	const url = new URL(base)
-	if (raw === part.raw(url)) return base
-	return part.apply(url, raw) ? url.href : null
+export function editPart(
+	baseHref: string,
+	part: UrlPart,
+	typedText: string,
+): string | null {
+	const url = new URL(baseHref)
+	if (typedText === part.readDecoded(url)) return baseHref
+	return part.applyTypedText(url, typedText) ? url.href : null
 }
 
 export type ParamField = "key" | "value"
 
 export interface ParamEdit {
-	index: number
+	paramIndex: number
 	field: ParamField
-	raw: string
+	typedText: string
 }
 
-const ENCODERS = { key: encodeParamKey, value: encodeParamValue }
+const ENCODER_BY_PARAM_FIELD = { key: encodeParamKey, value: encodeParamValue }
 
-export function editParam(base: readonly Param[], edit: ParamEdit): Param[] {
-	const params = [...base]
-	const original = base[edit.index] ?? BLANK_PARAM
-	params[edit.index] = {
-		...original,
+export function editParam(baseParams: readonly Param[], edit: ParamEdit): Param[] {
+	const editedParams = [...baseParams]
+	const originalParam = baseParams[edit.paramIndex] ?? BLANK_PARAM
+	const originalText = originalParam[edit.field]
+	editedParams[edit.paramIndex] = {
+		...originalParam,
 		[edit.field]:
-			edit.raw === decodeParam(original[edit.field])
-				? original[edit.field]
-				: ENCODERS[edit.field](edit.raw),
+			edit.typedText === decodeParam(originalText)
+				? originalText
+				: ENCODER_BY_PARAM_FIELD[edit.field](edit.typedText),
 	}
-	return params
+	return editedParams
 }
 
-export function withParams(href: string, params: readonly Param[]): string {
+export function hrefWithParams(href: string, params: readonly Param[]): string {
 	const url = new URL(href)
 	url.search = serializeParams(params)
 	return url.href

@@ -1,11 +1,11 @@
 import { describe, expect, test } from "bun:test"
 
 import { decodeParam } from "./codec.ts"
-import { editHref, editParam, editPart, editQuery, withParams } from "./edit.ts"
+import { editHref, editParam, editPart, editQuery, hrefWithParams } from "./edit.ts"
 import { moveParam, parseParams, serializeParams } from "./params.ts"
-import { isAvailable, PARTS } from "./parts.ts"
+import { isPartAvailable, URL_PARTS } from "./parts.ts"
 
-const { hash, hostname, pathname, port, protocol } = PARTS
+const { hash, hostname, pathname, port, protocol } = URL_PARTS
 
 describe("full URL", () => {
 	test("parses typed text, encoding what the parser would not", () => {
@@ -19,8 +19,8 @@ describe("full URL", () => {
 	})
 
 	test("keeps the URL as it was when the text is back to how it started", () => {
-		const base = "https://a.com/100%?q=a%20b"
-		expect(editHref(base, base)).toBe(base)
+		const baseHref = "https://a.com/100%?q=a%20b"
+		expect(editHref(baseHref, baseHref)).toBe(baseHref)
 	})
 })
 
@@ -33,19 +33,21 @@ describe("query string", () => {
 	})
 
 	test("keeps the URL as it was when the text is back to how it started", () => {
-		const base = "https://a.com/?q=100%&r=a%20b"
-		expect(editQuery(base, "q=100%&r=a%20b")).toBe(base)
+		const baseHref = "https://a.com/?q=100%&r=a%20b"
+		expect(editQuery(baseHref, "q=100%&r=a%20b")).toBe(baseHref)
 	})
 })
 
 describe("URL parts", () => {
 	test("shows and accepts Unicode hostnames", () => {
-		const base = "https://xn--mnchen-3ya.de/"
-		expect(hostname.raw(new URL(base))).toBe("münchen.de")
-		expect(hostname.raw(new URL("https://xn--fsqu00a.xn--0zwm56d/"))).toBe(
+		const baseHref = "https://xn--mnchen-3ya.de/"
+		expect(hostname.readDecoded(new URL(baseHref))).toBe("münchen.de")
+		expect(hostname.readDecoded(new URL("https://xn--fsqu00a.xn--0zwm56d/"))).toBe(
 			"例子.测试",
 		)
-		expect(editPart(base, hostname, "bücher.de")).toBe("https://xn--bcher-kva.de/")
+		expect(editPart(baseHref, hostname, "bücher.de")).toBe(
+			"https://xn--bcher-kva.de/",
+		)
 	})
 
 	test("rejects a hostname the browser would change", () => {
@@ -63,46 +65,54 @@ describe("URL parts", () => {
 		expect(editPart("https://a.com/", protocol, "HTTP:")).toBe("http://a.com/")
 		expect(editPart("https://a.com/", protocol, "no way")).toBeNull()
 	})
+})
 
+describe("decoding URL parts for editing", () => {
 	test("decodes the path but keeps encoded slashes and invisible characters", () => {
 		const url = new URL("https://a.com/a%20b%2Fc%E2%80%8B%0A")
-		expect(pathname.raw(url)).toBe("/a b%2Fc%E2%80%8B%0A")
+		expect(pathname.readDecoded(url)).toBe("/a b%2Fc%E2%80%8B%0A")
 	})
 
 	test("keeps an encoded percent sign that would read as an escape", () => {
-		expect(pathname.raw(new URL("https://a.com/%2541%25zz"))).toBe("/%2541%zz")
-	})
-
-	test("keeps a decoded private-use U+E000 encoded", () => {
-		expect(pathname.raw(new URL("https://a.com/%EE%80%80%25"))).toBe("/%EE%80%80%")
-	})
-
-	test("leaves a run of escapes encoded when it is not UTF-8", () => {
-		expect(pathname.raw(new URL("https://a.com/%FF%C3%BC/%C3%BC"))).toBe(
-			"/%FF%C3%BC/ü",
+		expect(pathname.readDecoded(new URL("https://a.com/%2541%25zz"))).toBe(
+			"/%2541%zz",
 		)
 	})
 
+	test("keeps a decoded private-use U+E000 encoded", () => {
+		expect(pathname.readDecoded(new URL("https://a.com/%EE%80%80%25"))).toBe(
+			"/%EE%80%80%",
+		)
+	})
+
+	test("leaves a run of escapes encoded when it is not UTF-8", () => {
+		expect(pathname.readDecoded(new URL("https://a.com/%FF%C3%BC/%C3%BC"))).toBe(
+			"/%FF%C3%BC/ü",
+		)
+	})
+})
+
+describe("editing URL parts", () => {
 	test("keeps the original encoding of an unchanged part", () => {
-		const base = "https://a.com/a%41"
-		expect(editPart(base, pathname, "/aA")).toBe(base)
-		expect(editPart(base, pathname, "/aAb")).toBe("https://a.com/aAb")
+		const baseHref = "https://a.com/a%41"
+		expect(editPart(baseHref, pathname, "/aA")).toBe(baseHref)
+		expect(editPart(baseHref, pathname, "/aAb")).toBe("https://a.com/aAb")
 	})
 
 	test("keeps a leading encoded # in the hash", () => {
-		const base = "https://a.com/#%23x"
-		expect(hash.raw(new URL(base))).toBe("%23x")
-		expect(editPart(base, hash, "%23xy")).toBe("https://a.com/#%23xy")
+		const baseHref = "https://a.com/#%23x"
+		expect(hash.readDecoded(new URL(baseHref))).toBe("%23x")
+		expect(editPart(baseHref, hash, "%23xy")).toBe("https://a.com/#%23xy")
 	})
 
 	test("knows which parts a URL can have", () => {
 		const mail = new URL("mailto:someone@example.com")
-		expect(isAvailable("hostname", mail)).toBe(false)
-		expect(isAvailable("pathname", mail)).toBe(true)
+		expect(isPartAvailable("hostname", mail)).toBe(false)
+		expect(isPartAvailable("pathname", mail)).toBe(true)
 		const file = new URL("file:///tmp/a")
-		expect(isAvailable("hostname", file)).toBe(true)
-		expect(isAvailable("port", file)).toBe(false)
-		expect(isAvailable("username", new URL("https://a.com/"))).toBe(true)
+		expect(isPartAvailable("hostname", file)).toBe(true)
+		expect(isPartAvailable("port", file)).toBe(false)
+		expect(isPartAvailable("username", new URL("https://a.com/"))).toBe(true)
 	})
 })
 
@@ -110,48 +120,60 @@ describe("query parameters", () => {
 	test("round-trips keys without values, empty values, and repeated keys", () => {
 		const params = parseParams("?a=1&flag&b=&a=2&&")
 		expect(params).toEqual([
-			{ key: "a", value: "1", hasValue: true },
-			{ key: "flag", value: "", hasValue: false },
-			{ key: "b", value: "", hasValue: true },
-			{ key: "a", value: "2", hasValue: true },
+			{ key: "a", value: "1", hasEqualsSign: true },
+			{ key: "flag", value: "", hasEqualsSign: false },
+			{ key: "b", value: "", hasEqualsSign: true },
+			{ key: "a", value: "2", hasEqualsSign: true },
 		])
 		expect(serializeParams(params)).toBe("a=1&flag&b=&a=2")
 	})
 
 	test("drops blank parameters", () => {
-		expect(serializeParams([{ key: "", value: "", hasValue: true }])).toBe("")
+		expect(serializeParams([{ key: "", value: "", hasEqualsSign: true }])).toBe("")
 	})
 
 	test("decodes plus signs as spaces", () => {
 		expect(decodeParam("a+b%2Bc%20d")).toBe("a b+c d")
 	})
+})
 
+describe("editing query parameters", () => {
 	test("encodes delimiters in keys and values", () => {
-		const base = parseParams("k=v")
+		const baseParams = parseParams("k=v")
 		expect(
-			editParam(base, { index: 0, field: "key", raw: "a&b=c+d" })[0]?.key,
+			editParam(baseParams, {
+				paramIndex: 0,
+				field: "key",
+				typedText: "a&b=c+d",
+			})[0]?.key,
 		).toBe("a%26b%3Dc%2Bd")
 		expect(
-			editParam(base, { index: 0, field: "value", raw: "1&2=3 #ü" })[0],
-		).toEqual({ key: "k", value: "1%262=3%20%23%C3%BC", hasValue: true })
+			editParam(baseParams, {
+				paramIndex: 0,
+				field: "value",
+				typedText: "1&2=3 #ü",
+			})[0],
+		).toEqual({ key: "k", value: "1%262=3%20%23%C3%BC", hasEqualsSign: true })
 	})
 
 	test("keeps the original encoding of an unchanged field", () => {
-		const base = parseParams("q=a%41+b")
-		expect(editParam(base, { index: 0, field: "value", raw: "aA b" })).toEqual(base)
+		const baseParams = parseParams("q=a%41+b")
+		expect(
+			editParam(baseParams, { paramIndex: 0, field: "value", typedText: "aA b" }),
+		).toEqual(baseParams)
 	})
 
 	test("gives a key without a value one once it is typed", () => {
 		const params = editParam(parseParams("flag"), {
-			index: 0,
+			paramIndex: 0,
 			field: "value",
-			raw: "on",
+			typedText: "on",
 		})
 		expect(serializeParams(params)).toBe("flag=on")
 	})
 
 	test("adds a parameter past the end", () => {
-		const params = editParam([], { index: 0, field: "key", raw: "new" })
+		const params = editParam([], { paramIndex: 0, field: "key", typedText: "new" })
 		expect(serializeParams(params)).toBe("new=")
 	})
 
@@ -163,7 +185,7 @@ describe("query parameters", () => {
 
 	test("writes the parameters into the URL without re-encoding them", () => {
 		const params = parseParams("a=%7B%7D&b='")
-		expect(withParams("https://a.com/?x#top", params)).toBe(
+		expect(hrefWithParams("https://a.com/?x#top", params)).toBe(
 			"https://a.com/?a=%7B%7D&b=%27#top",
 		)
 	})

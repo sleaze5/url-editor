@@ -1,28 +1,31 @@
 import { createMemo, createSignal, Show } from "solid-js"
 
-import type { PartSpec } from "../lib/url/parts.ts"
+import type { UrlPart } from "../lib/url/parts.ts"
 import { Field } from "./Field.tsx"
 import { Tooltip } from "./Tooltip.tsx"
 
 interface PartFieldProps {
-	part: PartSpec
+	part: UrlPart
 	url: URL
-	onEdit: (part: PartSpec, raw: string) => boolean
+	onEdit: (part: UrlPart, typedText: string) => boolean
 	onFocus: () => void
 	onBlur: () => void
 	autofocus: boolean
-	errorAlign: "start" | "end"
+	rejectionMessageAlign: "start" | "end"
 }
 
 export function PartField(props: PartFieldProps) {
-	const [unicode, setUnicode] = createSignal(false)
-	const flippable = createMemo(() => props.part.id === "hostname")
-	const value = createMemo(() =>
-		unicode() ? props.part.raw(props.url) : props.part.encoded(props.url),
+	const [isShowingUnicode, setIsShowingUnicode] = createSignal(false)
+	const isHostname = createMemo(() => props.part.id === "hostname")
+	const textAtRest = createMemo(() =>
+		isShowingUnicode()
+			? props.part.readDecoded(props.url)
+			: props.part.readEncoded(props.url),
 	)
-	const canFlip = createMemo(
+	const hasUnicodeForm = createMemo(
 		() =>
-			flippable() && props.part.raw(props.url) !== props.part.encoded(props.url),
+			isHostname() &&
+			props.part.readDecoded(props.url) !== props.part.readEncoded(props.url),
 	)
 
 	return (
@@ -40,24 +43,28 @@ export function PartField(props: PartFieldProps) {
 				</span>
 				<Field
 					label={props.part.label}
-					value={value()}
-					raw={flippable() ? value() : props.part.raw(props.url)}
-					onEdit={(raw) => props.onEdit(props.part, raw)}
-					error={props.part.error}
-					errorAlign={props.errorAlign}
+					textAtRest={textAtRest()}
+					textToEdit={
+						isHostname() ? textAtRest() : props.part.readDecoded(props.url)
+					}
+					onEdit={(typedText) => props.onEdit(props.part, typedText)}
+					rejectionMessage={props.part.rejectionMessage}
+					rejectionMessageAlign={props.rejectionMessageAlign}
 					autofocus={props.autofocus}
 				/>
 			</label>
-			<Show when={canFlip()}>
+			<Show when={hasUnicodeForm()}>
 				<button
 					type="button"
-					aria-pressed={unicode() ? "true" : "false"}
+					aria-pressed={isShowingUnicode() ? "true" : "false"}
 					onClick={() => {
-						setUnicode((on) => !on)
+						setIsShowingUnicode((isShowing) => !isShowing)
 					}}
 					class="group/tip absolute top-0 right-0 h-4 rounded-sm border border-transparent px-1.25 text-xs/3.5 font-medium text-fg-muted transition-[color,background-color,border-color] before:absolute before:inset-x-0 before:-inset-y-1 hover:text-fg aria-pressed:border-line aria-pressed:bg-hover aria-pressed:text-fg">
 					Unicode
-					<Tooltip text={unicode() ? "Show Punycode" : "Show Unicode"} />
+					<Tooltip
+						text={isShowingUnicode() ? "Show Punycode" : "Show Unicode"}
+					/>
 				</button>
 			</Show>
 		</div>

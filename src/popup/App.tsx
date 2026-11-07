@@ -16,9 +16,9 @@ import { TopBar } from "../components/TopBar.tsx"
 import { UrlBar } from "../components/UrlBar.tsx"
 import { loadDraft, saveDraft, watchDraft } from "../lib/browser/drafts.ts"
 import {
-	type ActiveTab,
-	getActiveTab,
-	navigate,
+	type EditedTab,
+	getEditedTab,
+	navigateTab,
 	watchTab,
 } from "../lib/browser/tabs.ts"
 import { canFocusTab, canPopOut, focusTab, popOut } from "../lib/browser/windows.ts"
@@ -27,157 +27,164 @@ import {
 	editParam,
 	editPart,
 	editQuery,
+	hrefWithParams,
 	type ParamEdit,
-	withParams,
 } from "../lib/url/edit.ts"
 import { BLANK_PARAM, moveParam, type Param, parseParams } from "../lib/url/params.ts"
-import type { PartSpec } from "../lib/url/parts.ts"
+import type { UrlPart } from "../lib/url/parts.ts"
 
 type Status = "loading" | "ready" | "unavailable" | "closed"
 
-const FAILED_MS = 5000
+const BLOCKED_NOTICE_MS = 5000
 
-function submitOnEnter(submit: () => void): (event: KeyboardEvent) => void {
+function openOnEnter(openUrl: () => void): (event: KeyboardEvent) => void {
 	return (event) => {
 		if (event.key !== "Enter" || event.defaultPrevented) return
 		if (event.target instanceof HTMLButtonElement) return
 		event.preventDefault()
-		submit()
+		openUrl()
 	}
 }
 
 export function App() {
-	const [tab, setTab] = createSignal<ActiveTab | null>(null)
+	const [editedTab, setEditedTab] = createSignal<EditedTab | null>(null)
 	const [status, setStatus] = createSignal<Status>("loading")
-	const [href, setHref] = createSignal("")
+	const [editedHref, setEditedHref] = createSignal("")
 	const [params, setParams] = createSignal<readonly Param[]>([])
-	const [failedHref, setFailedHref] = createSignal<string | null>(null)
+	const [blockedHref, setBlockedHref] = createSignal<string | null>(null)
 
-	const url = createMemo(() => (href() === "" ? null : new URL(href())))
-	const ready = createMemo(() => (status() === "ready" ? tab() : null))
+	const editedUrl = createMemo(() =>
+		editedHref() === "" ? null : new URL(editedHref()),
+	)
+	const readyTab = createMemo(() => (status() === "ready" ? editedTab() : null))
 
-	const popOutAction = createMemo(() => {
-		const current = tab()
-		return current && canPopOut(current) ? () => void popOut(current) : null
+	const popOutHandler = createMemo(() => {
+		const tab = editedTab()
+		return tab && canPopOut(tab) ? () => void popOut(tab) : null
 	})
-	const focusTabAction = createMemo(() => {
-		const current = tab()
-		if (!current || status() === "closed" || !canFocusTab(current)) return null
-		return () => void focusTab(current)
+	const focusTabHandler = createMemo(() => {
+		const tab = editedTab()
+		if (!tab || status() === "closed" || !canFocusTab(tab)) return null
+		return () => void focusTab(tab)
 	})
 
-	let base: { href: string; params: readonly Param[] } = { href: "", params: [] }
-	let failedTimer: ReturnType<typeof setTimeout> | undefined
+	let stateAtFocus: { href: string; params: readonly Param[] } = {
+		href: "",
+		params: [],
+	}
+	let blockedNoticeTimer: ReturnType<typeof setTimeout> | undefined
 
-	function load(next: string): void {
-		setHref(next)
-		setParams(parseParams(new URL(next).search))
+	function loadHref(nextHref: string): void {
+		setEditedHref(nextHref)
+		setParams(parseParams(new URL(nextHref).search))
 	}
 
-	function commit(next: string | null): boolean {
-		if (next === null) return false
-		load(next)
+	function loadHrefIfValid(nextHref: string | null): boolean {
+		if (nextHref === null) return false
+		loadHref(nextHref)
 		return true
 	}
 
-	function snapshot(): void {
-		base = { href: href(), params: params() }
+	function rememberStateAtFocus(): void {
+		stateAtFocus = { href: editedHref(), params: params() }
 	}
 
-	function editUrlPart(part: PartSpec, raw: string): boolean {
-		return commit(editPart(base.href, part, raw))
+	function editUrlPart(part: UrlPart, typedText: string): boolean {
+		return loadHrefIfValid(editPart(stateAtFocus.href, part, typedText))
 	}
 
-	function updateParams(next: readonly Param[]): void {
-		setParams(next)
-		setHref(withParams(href(), next))
+	function setParamsAndHref(nextParams: readonly Param[]): void {
+		setParams(nextParams)
+		setEditedHref(hrefWithParams(editedHref(), nextParams))
 	}
 
-	function editParamField(edit: ParamEdit): void {
-		updateParams(editParam(base.params, edit))
+	function editParamText(edit: ParamEdit): void {
+		setParamsAndHref(editParam(stateAtFocus.params, edit))
 	}
 
-	function addParam(): void {
+	function addBlankParam(): void {
 		setParams([...params(), BLANK_PARAM])
 	}
 
-	function reorderParam(from: number, to: number): void {
-		updateParams(moveParam(params(), from, to))
+	function moveParamTo(fromIndex: number, toIndex: number): void {
+		setParamsAndHref(moveParam(params(), fromIndex, toIndex))
 	}
 
-	function removeParam(index: number): void {
-		updateParams(params().filter((_, i) => i !== index))
+	function removeParam(removedIndex: number): void {
+		setParamsAndHref(
+			params().filter((_, paramIndex) => paramIndex !== removedIndex),
+		)
 	}
 
-	function apply(): void {
-		const current = tab()
-		if (!current) return
-		const target = href()
-		navigate(current, target).catch(() => {
-			setFailedHref(target)
-			clearTimeout(failedTimer)
-			failedTimer = setTimeout(() => {
-				setFailedHref(null)
-			}, FAILED_MS)
+	function openEditedUrl(): void {
+		const tab = editedTab()
+		if (!tab) return
+		const targetHref = editedHref()
+		navigateTab(tab, targetHref).catch(() => {
+			setBlockedHref(targetHref)
+			clearTimeout(blockedNoticeTimer)
+			blockedNoticeTimer = setTimeout(() => {
+				setBlockedHref(null)
+			}, BLOCKED_NOTICE_MS)
 		})
 	}
 
-	function followTab(next: string): void {
-		const current = tab()
-		if (!current) return
-		setTab({ ...current, url: next })
-		load(next)
+	function followTabNavigation(navigatedUrl: string): void {
+		const tab = editedTab()
+		if (!tab) return
+		setEditedTab({ ...tab, url: navigatedUrl })
+		loadHref(navigatedUrl)
 	}
 
 	onSettled(() => {
 		void (async () => {
-			const current = await getActiveTab()
-			if (!current) {
+			const tab = await getEditedTab()
+			if (!tab) {
 				setStatus("unavailable")
 				return
 			}
-			setTab(current)
-			load((await loadDraft(current)) ?? current.url)
+			setEditedTab(tab)
+			loadHref((await loadDraft(tab)) ?? tab.url)
 			setStatus("ready")
 		})()
 
-		const keydown = submitOnEnter(apply)
-		window.addEventListener("keydown", keydown)
+		const handleEnterKey = openOnEnter(openEditedUrl)
+		window.addEventListener("keydown", handleEnterKey)
 		return () => {
-			window.removeEventListener("keydown", keydown)
+			window.removeEventListener("keydown", handleEnterKey)
 		}
 	})
 
 	createEffect(
-		() => [ready(), href()] as const,
-		([current, next]) => {
-			if (current) void saveDraft(current, next)
+		() => [readyTab(), editedHref()] as const,
+		([tab, href]) => {
+			if (tab) void saveDraft(tab, href)
 		},
 	)
 
-	function watch(current: ActiveTab): () => void {
-		const stopDraft = watchDraft(current, (next) => {
-			if (next !== href()) load(next)
+	function watchTabAndDrafts(tab: EditedTab): () => void {
+		const stopWatchingDrafts = watchDraft(tab, (otherViewHref) => {
+			if (otherViewHref !== editedHref()) loadHref(otherViewHref)
 		})
-		const stopTab = watchTab(current, {
-			onurl: followTab,
-			onclose: () => {
+		const stopWatchingTab = watchTab(tab, {
+			onUrlChange: followTabNavigation,
+			onClose: () => {
 				setStatus("closed")
 			},
 		})
 		return () => {
-			stopDraft()
-			stopTab()
+			stopWatchingDrafts()
+			stopWatchingTab()
 		}
 	}
 
-	createEffect(ready, (current) => (current ? watch(current) : undefined))
+	createEffect(readyTab, (tab) => (tab ? watchTabAndDrafts(tab) : undefined))
 
 	return (
 		<div
 			class="flex h-(--height-popup) flex-col windowed:h-dvh"
-			onFocusIn={snapshot}>
-			<TopBar onPopOut={popOutAction()} onFocusTab={focusTabAction()} />
+			onFocusIn={rememberStateAtFocus}>
+			<TopBar onPopOut={popOutHandler()} onFocusTab={focusTabHandler()} />
 			<main class="flex min-h-0 flex-auto scroll-py-3 flex-col gap-2.5 overflow-y-auto overscroll-contain p-3">
 				<Switch>
 					<Match when={status() === "closed"}>
@@ -185,24 +192,30 @@ export function App() {
 							Open the editor from another tab to keep editing its URL.
 						</Notice>
 					</Match>
-					<Match when={url()}>
-						{(current) => (
+					<Match when={editedUrl()}>
+						{(url) => (
 							<>
 								<UrlBar
-									href={href()}
-									onEdit={(raw) => commit(editHref(base.href, raw))}
-								/>
-								<PartsEditor url={current()} onEdit={editUrlPart} />
-								<ParamsEditor
-									url={current()}
-									params={params()}
-									onQueryEdit={(raw) =>
-										commit(editQuery(base.href, raw))
+									href={editedHref()}
+									onEdit={(typedHref) =>
+										loadHrefIfValid(
+											editHref(stateAtFocus.href, typedHref),
+										)
 									}
-									onEdit={editParamField}
-									onAdd={addParam}
-									onMove={reorderParam}
-									onRemove={removeParam}
+								/>
+								<PartsEditor url={url()} onEdit={editUrlPart} />
+								<ParamsEditor
+									url={url()}
+									params={params()}
+									onQueryEdit={(typedQuery) =>
+										loadHrefIfValid(
+											editQuery(stateAtFocus.href, typedQuery),
+										)
+									}
+									onParamEdit={editParamText}
+									onAddParam={addBlankParam}
+									onMoveParam={moveParamTo}
+									onRemoveParam={removeParam}
 								/>
 							</>
 						)}
@@ -214,15 +227,15 @@ export function App() {
 					</Match>
 				</Switch>
 			</main>
-			<Show when={url() && status() !== "closed"}>
+			<Show when={editedUrl() && status() !== "closed"}>
 				<ActionBar
-					dirty={href() !== tab()?.url}
-					failed={failedHref() === href()}
+					isEdited={editedHref() !== editedTab()?.url}
+					wasBlocked={blockedHref() === editedHref()}
 					onReset={() => {
-						const current = tab()
-						if (current) load(current.url)
+						const tab = editedTab()
+						if (tab) loadHref(tab.url)
 					}}
-					onApply={apply}
+					onOpenUrl={openEditedUrl}
 				/>
 			</Show>
 		</div>

@@ -8,30 +8,34 @@ import { IconButton } from "./IconButton.tsx"
 
 interface UrlBarProps {
 	href: string
-	onEdit: (raw: string) => boolean
+	onEdit: (typedHref: string) => boolean
 }
 
 type CopyState = "idle" | "done" | "failed"
 
-const FEEDBACK_MS = 1200
-const ICONS = { idle: Copy, done: Check, failed: X }
-const TIPS = { idle: "Copy URL", done: "Copied", failed: "Couldn't copy" }
+const COPY_FEEDBACK_MS = 1200
+const COPY_STATE_ICONS = { idle: Copy, done: Check, failed: X }
+const COPY_STATE_TOOLTIPS = {
+	idle: "Copy URL",
+	done: "Copied",
+	failed: "Couldn't copy",
+}
 
 export function UrlBar(props: UrlBarProps) {
-	const [copied, setCopied] = createSignal<CopyState>("idle")
-	let timer: ReturnType<typeof setTimeout> | undefined
+	const [copyState, setCopyState] = createSignal<CopyState>("idle")
+	let copyFeedbackTimer: ReturnType<typeof setTimeout> | undefined
 
-	async function copy(): Promise<void> {
+	async function copyHref(): Promise<void> {
 		try {
 			await navigator.clipboard.writeText(props.href)
-			setCopied("done")
+			setCopyState("done")
 		} catch {
-			setCopied("failed")
+			setCopyState("failed")
 		}
-		clearTimeout(timer)
-		timer = setTimeout(() => {
-			setCopied("idle")
-		}, FEEDBACK_MS)
+		clearTimeout(copyFeedbackTimer)
+		copyFeedbackTimer = setTimeout(() => {
+			setCopyState("idle")
+		}, COPY_FEEDBACK_MS)
 	}
 
 	return (
@@ -42,23 +46,23 @@ export function UrlBar(props: UrlBarProps) {
 				</span>
 				<Field
 					label="Full URL"
-					value={props.href}
+					textAtRest={props.href}
 					onEdit={props.onEdit}
-					error="Not a complete URL; include a scheme such as https://"
+					rejectionMessage="Not a complete URL; include a scheme such as https://"
 				/>
 			</label>
 			<div class="mt-4.5">
 				<IconButton
-					icon={ICONS[copied()]}
+					icon={COPY_STATE_ICONS[copyState()]}
 					label="Copy URL"
-					tip={TIPS[copied()]}
+					tooltip={COPY_STATE_TOOLTIPS[copyState()]}
 					onClick={() => {
-						void copy()
+						void copyHref()
 					}}
 				/>
 			</div>
 			<span class="sr-only" aria-live="polite">
-				{copied() === "idle" ? "" : TIPS[copied()]}
+				{copyState() === "idle" ? "" : COPY_STATE_TOOLTIPS[copyState()]}
 			</span>
 		</div>
 	)

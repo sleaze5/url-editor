@@ -3,7 +3,7 @@ interface Packument {
 	time: Record<string, string>
 }
 
-const DAY_MS = 86_400_000
+const MS_PER_DAY = 86_400_000
 
 function isPackument(value: unknown): value is Packument {
 	return (
@@ -18,18 +18,21 @@ function isPackument(value: unknown): value is Packument {
 	)
 }
 
-export async function fetchVersions(
-	name: string,
+export async function fetchReleasedVersions(
+	packageName: string,
 	minAgeDays: number,
 ): Promise<string[]> {
-	const url = `https://registry.npmjs.org/${name.replace("/", "%2f")}`
+	const url = `https://registry.npmjs.org/${packageName.replace("/", "%2f")}`
 	const response = await fetch(url)
 	if (!response.ok) throw new Error(`Failed to fetch ${url}: HTTP ${response.status}`)
-	const body: unknown = await response.json()
-	if (!isPackument(body)) throw new Error(`${url} returned no versions.`)
-	const newest = Date.now() - minAgeDays * DAY_MS
-	return Object.entries(body.versions)
+	const packument: unknown = await response.json()
+	if (!isPackument(packument)) throw new Error(`${url} returned no versions.`)
+	const latestAllowedPublishTime = Date.now() - minAgeDays * MS_PER_DAY
+	return Object.entries(packument.versions)
 		.filter(([, metadata]) => metadata.deprecated === undefined)
 		.map(([version]) => version)
-		.filter((version) => Date.parse(body.time[version] ?? "") <= newest)
+		.filter(
+			(version) =>
+				Date.parse(packument.time[version] ?? "") <= latestAllowedPublishTime,
+		)
 }

@@ -2,13 +2,13 @@ import CornerDownLeft from "@lucide/solid/icons/corner-down-left"
 import { Match, Switch } from "solid-js"
 
 interface ActionBarProps {
-	dirty: boolean
-	failed: boolean
+	isEdited: boolean
+	wasBlocked: boolean
 	onReset: () => void
-	onApply: () => void
+	onOpenUrl: () => void
 }
 
-const BUTTON =
+const BUTTON_CLASSES =
 	"inline-flex h-7 items-center gap-1.5 rounded-sm border px-3 whitespace-nowrap transition-[background-color,border-color,opacity,scale] ease-out not-disabled:active:scale-(--press-scale)"
 
 export function ActionBar(props: ActionBarProps) {
@@ -16,12 +16,12 @@ export function ActionBar(props: ActionBarProps) {
 		<footer class="flex min-h-11 flex-none items-center gap-1.5 border-t border-line bg-bg px-3 py-2">
 			<p aria-live="polite" class="min-w-0 flex-1 text-xs text-fg-muted">
 				<Switch>
-					<Match when={props.failed}>
+					<Match when={props.wasBlocked}>
 						<span class="inline-flex text-danger transition-opacity starting:opacity-0">
 							The browser blocked this URL. Copy it instead.
 						</span>
 					</Match>
-					<Match when={props.dirty}>
+					<Match when={props.isEdited}>
 						<span class="inline-flex items-center gap-1.5 transition-opacity before:size-1.5 before:rounded-full before:bg-accent starting:opacity-0">
 							Edited
 						</span>
@@ -30,12 +30,12 @@ export function ActionBar(props: ActionBarProps) {
 			</p>
 			<button
 				type="button"
-				disabled={!props.dirty}
+				disabled={!props.isEdited}
 				onClick={() => {
 					props.onReset()
 				}}
 				class={[
-					BUTTON,
+					BUTTON_CLASSES,
 					"border-line bg-surface font-medium hover:not-disabled:border-line-strong hover:not-disabled:bg-hover disabled:opacity-45",
 				]}>
 				Reset
@@ -43,10 +43,10 @@ export function ActionBar(props: ActionBarProps) {
 			<button
 				type="button"
 				onClick={() => {
-					props.onApply()
+					props.onOpenUrl()
 				}}
 				class={[
-					BUTTON,
+					BUTTON_CLASSES,
 					"border-primary bg-primary pr-1.5 font-semibold text-on-primary hover:border-primary-hover hover:bg-primary-hover",
 				]}>
 				Open URL

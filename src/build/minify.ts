@@ -13,14 +13,14 @@ const minifyMarkup: Minifier = (source) =>
 
 const minifyJson: Minifier = (source) => JSON.stringify(JSON.parse(source))
 
-const MINIFIERS: Record<string, Minifier> = {
+const MINIFIER_BY_EXTENSION: Record<string, Minifier> = {
 	".html": minifyMarkup,
 	".svg": minifyMarkup,
 	".json": minifyJson,
 }
 
-async function listFiles(dir: string): Promise<string[]> {
-	const entries = await readdir(dir, { recursive: true, withFileTypes: true })
+async function listFilesRecursively(directory: string): Promise<string[]> {
+	const entries = await readdir(directory, { recursive: true, withFileTypes: true })
 	return entries
 		.filter((entry) => entry.isFile())
 		.map((entry) => join(entry.parentPath, entry.name))
@@ -35,13 +35,13 @@ export function minifyDist(): Plugin {
 			outDir = config.build.outDir
 		},
 		async closeBundle() {
-			const files = await listFiles(outDir)
+			const builtFiles = await listFilesRecursively(outDir)
 			await Promise.all(
-				files.map(async (path) => {
-					const minify = MINIFIERS[extname(path)]
-					if (!minify) return
-					const file = Bun.file(path)
-					await Bun.write(path, minify(await file.text()))
+				builtFiles.map(async (filePath) => {
+					const minifyFile = MINIFIER_BY_EXTENSION[extname(filePath)]
+					if (!minifyFile) return
+					const builtFile = Bun.file(filePath)
+					await Bun.write(filePath, minifyFile(await builtFile.text()))
 				}),
 			)
 		},

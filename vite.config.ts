@@ -4,13 +4,17 @@ import solid from "@solidjs/vite-plugin"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig, type Plugin } from "vite"
 
-import pkg from "./package.json" with { type: "json" }
-import { type Browser, createManifest, MIN_VERSION } from "./src/build/manifest.ts"
+import packageJson from "./package.json" with { type: "json" }
+import {
+	type Browser,
+	createManifest,
+	MIN_BROWSER_VERSION,
+} from "./src/build/manifest.ts"
 import { minifyDist } from "./src/build/minify.ts"
 
 const browser: Browser = process.env["BROWSER"] === "firefox" ? "firefox" : "chrome"
-const target = `${browser}${MIN_VERSION[browser]}`
-const root = import.meta.dirname
+const buildTarget = `${browser}${MIN_BROWSER_VERSION[browser]}`
+const projectRoot = import.meta.dirname
 
 function manifestPlugin(): Plugin {
 	return {
@@ -20,29 +24,34 @@ function manifestPlugin(): Plugin {
 			this.emitFile({
 				type: "asset",
 				fileName: "manifest.json",
-				source: `${JSON.stringify(createManifest(browser, pkg), null, "\t")}\n`,
+				source: `${JSON.stringify(createManifest(browser, packageJson), null, "\t")}\n`,
 			})
 		},
 	}
 }
 
 export default defineConfig(({ mode }) => {
-	const production = mode === "production"
+	const isProduction = mode === "production"
 	return {
-		root: resolve(root, "src/popup"),
+		root: resolve(projectRoot, "src/popup"),
 		base: "./",
-		publicDir: resolve(root, "src/assets"),
-		plugins: [tailwindcss(), solid(), manifestPlugin(), production && minifyDist()],
+		publicDir: resolve(projectRoot, "src/assets"),
+		plugins: [
+			tailwindcss(),
+			solid(),
+			manifestPlugin(),
+			isProduction && minifyDist(),
+		],
 		css: { transformer: "lightningcss" },
 		build: {
-			outDir: resolve(root, "dist", `${pkg.name}-${browser}`),
+			outDir: resolve(projectRoot, "dist", `${packageJson.name}-${browser}`),
 			emptyOutDir: true,
-			target,
-			cssTarget: target,
+			target: buildTarget,
+			cssTarget: buildTarget,
 			modulePreload: { polyfill: false },
-			minify: production && "oxc",
-			cssMinify: production && "lightningcss",
-			sourcemap: production ? false : "inline",
+			minify: isProduction && "oxc",
+			cssMinify: isProduction && "lightningcss",
+			sourcemap: isProduction ? false : "inline",
 			reportCompressedSize: false,
 			rolldownOptions: {
 				output: { comments: false },

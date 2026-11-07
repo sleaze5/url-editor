@@ -36,50 +36,70 @@ function parsePrerelease(text: string | undefined): Prerelease | undefined {
 	return { tag, number: Number(number) }
 }
 
-function newestStable(candidates: string[], atLeast: (version: Version) => boolean) {
-	let best: { text: string; version: Version } | undefined
-	for (const text of candidates) {
-		const version = parseVersion(text)
+function newestStable(
+	candidates: string[],
+	isAcceptable: (version: Version) => boolean,
+) {
+	let newest: { versionText: string; version: Version } | undefined
+	for (const versionText of candidates) {
+		const version = parseVersion(versionText)
 		if (version === undefined || version.prerelease !== undefined) continue
-		if (!atLeast(version)) continue
-		if (best === undefined || compareStable(version, best.version) > 0) {
-			best = { text, version }
+		if (!isAcceptable(version)) continue
+		if (newest === undefined || compareStable(version, newest.version) > 0) {
+			newest = { versionText, version }
 		}
 	}
-	return best?.text
+	return newest?.versionText
 }
 
-function isNewerOnLine(text: string, from: Version, best: Prerelease): boolean {
-	const version = parseVersion(text)
-	if (version === undefined || compareStable(version, from) !== 0) return false
-	const candidate = parsePrerelease(version.prerelease)
-	return candidate?.tag === best.tag && candidate.number > best.number
+function isNewerOnSameLine(
+	versionText: string,
+	currentVersion: Version,
+	newestPrerelease: Prerelease,
+): boolean {
+	const version = parseVersion(versionText)
+	if (version === undefined || compareStable(version, currentVersion) !== 0)
+		return false
+	const prerelease = parsePrerelease(version.prerelease)
+	return (
+		prerelease?.tag === newestPrerelease.tag &&
+		prerelease.number > newestPrerelease.number
+	)
 }
 
-function newestOnLine(from: Version, candidates: string[]): string | undefined {
-	const line = parsePrerelease(from.prerelease)
-	if (line === undefined) return undefined
-	let best = line
-	let bestText: string | undefined
-	for (const text of candidates) {
-		if (!isNewerOnLine(text, from, best)) continue
-		best = parsePrerelease(parseVersion(text)?.prerelease) ?? best
-		bestText = text
+function newestOnSamePrereleaseLine(
+	currentVersion: Version,
+	candidates: string[],
+): string | undefined {
+	const currentPrerelease = parsePrerelease(currentVersion.prerelease)
+	if (currentPrerelease === undefined) return undefined
+	let newestPrerelease = currentPrerelease
+	let newestText: string | undefined
+	for (const versionText of candidates) {
+		if (!isNewerOnSameLine(versionText, currentVersion, newestPrerelease)) continue
+		newestPrerelease =
+			parsePrerelease(parseVersion(versionText)?.prerelease) ?? newestPrerelease
+		newestText = versionText
 	}
-	return bestText
+	return newestText
 }
 
 export function latestUpgrade(
-	current: string,
+	currentVersionText: string,
 	candidates: string[],
 ): string | undefined {
-	const from = parseVersion(current)
-	if (from === undefined) return undefined
-	if (from.prerelease === undefined) {
-		return newestStable(candidates, (version) => compareStable(version, from) > 0)
+	const currentVersion = parseVersion(currentVersionText)
+	if (currentVersion === undefined) return undefined
+	if (currentVersion.prerelease === undefined) {
+		return newestStable(
+			candidates,
+			(version) => compareStable(version, currentVersion) > 0,
+		)
 	}
 	return (
-		newestStable(candidates, (version) => compareStable(version, from) >= 0) ??
-		newestOnLine(from, candidates)
+		newestStable(
+			candidates,
+			(version) => compareStable(version, currentVersion) >= 0,
+		) ?? newestOnSamePrereleaseLine(currentVersion, candidates)
 	)
 }

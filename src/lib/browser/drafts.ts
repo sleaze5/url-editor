@@ -1,70 +1,78 @@
-import type { ActiveTab } from "./tabs.ts"
+import type { EditedTab } from "./tabs.ts"
 
+/** An unsaved edit of a tab's URL, shared between the toolbar popup and a popped-out window. */
 interface Draft {
-	original: string
-	href: string
-	by: string
+	/** The tab's URL when the edit was made; a draft for an older URL is stale. */
+	tabUrl: string
+	editedHref: string
+	/** The view that wrote the draft, so it can ignore its own writes. */
+	viewId: string
 }
 
-const VIEW_ID = crypto.randomUUID()
+const THIS_VIEW_ID = crypto.randomUUID()
 // The draft each tab holds in storage, as far as this view knows. A draft is written
 // only when it differs, so a draft received from the other view is not sent back.
-const stored = new Map<number, Pick<Draft, "original" | "href">>()
+const draftsKnownInStorage = new Map<number, Pick<Draft, "tabUrl" | "editedHref">>()
 
-const hasSessionStorage = (): boolean =>
+const hasSessionStorageApi = (): boolean =>
 	typeof chrome !== "undefined" && "storage" in chrome && "session" in chrome.storage
 
-const keyOf = (id: number): string => `draft:${id}`
+const draftStorageKey = (tabId: number): string => `draft:${tabId}`
 
 function isDraft(value: unknown): value is Draft {
 	return (
 		typeof value === "object" &&
 		value !== null &&
-		typeof (value as Partial<Draft>).original === "string" &&
-		typeof (value as Partial<Draft>).href === "string" &&
-		typeof (value as Partial<Draft>).by === "string"
+		typeof (value as Partial<Draft>).tabUrl === "string" &&
+		typeof (value as Partial<Draft>).editedHref === "string" &&
+		typeof (value as Partial<Draft>).viewId === "string"
 	)
 }
 
-export async function loadDraft(tab: ActiveTab): Promise<string | null> {
-	if (tab.id === undefined || !hasSessionStorage()) return null
-	const key = keyOf(tab.id)
-	const { [key]: draft } = await chrome.storage.session.get(key)
-	if (isDraft(draft) && draft.original === tab.url) {
-		stored.set(tab.id, draft)
-		return draft.href
+export async function loadDraft(tab: EditedTab): Promise<string | null> {
+	if (tab.id === undefined || !hasSessionStorageApi()) return null
+	const storageKey = draftStorageKey(tab.id)
+	const { [storageKey]: storedDraft } = await chrome.storage.session.get(storageKey)
+	if (isDraft(storedDraft) && storedDraft.tabUrl === tab.url) {
+		draftsKnownInStorage.set(tab.id, storedDraft)
+		return storedDraft.editedHref
 	}
-	if (draft !== undefined) await chrome.storage.session.remove(key)
+	if (storedDraft !== undefined) await chrome.storage.session.remove(storageKey)
 	return null
 }
 
-export async function saveDraft(tab: ActiveTab, href: string): Promise<void> {
-	if (tab.id === undefined || !hasSessionStorage()) return
-	const last = stored.get(tab.id)
-	if (last?.original === tab.url && last.href === href) return
-	const draft: Draft = { original: tab.url, href, by: VIEW_ID }
-	stored.set(tab.id, draft)
-	await chrome.storage.session.set({ [keyOf(tab.id)]: draft })
+export async function saveDraft(tab: EditedTab, editedHref: string): Promise<void> {
+	if (tab.id === undefined || !hasSessionStorageApi()) return
+	const knownDraft = draftsKnownInStorage.get(tab.id)
+	if (knownDraft?.tabUrl === tab.url && knownDraft.editedHref === editedHref) return
+	const draft: Draft = { tabUrl: tab.url, editedHref, viewId: THIS_VIEW_ID }
+	draftsKnownInStorage.set(tab.id, draft)
+	await chrome.storage.session.set({ [draftStorageKey(tab.id)]: draft })
 }
 
+/** Calls `onOtherViewDraft` when the other view saves a draft for this tab's URL. */
 export function watchDraft(
-	tab: ActiveTab,
-	onchange: (href: string) => void,
+	tab: EditedTab,
+	onOtherViewDraft: (editedHref: string) => void,
 ): () => void {
-	if (tab.id === undefined || !hasSessionStorage()) return () => {}
-	const { id } = tab
-	const key = keyOf(id)
-	const listener = (changes: Record<string, chrome.storage.StorageChange>): void => {
-		const change = changes[key]
-		if (!change) return
-		const draft: unknown = change.newValue
-		if (isDraft(draft) && draft.by !== VIEW_ID && draft.original === tab.url) {
-			stored.set(id, draft)
-			onchange(draft.href)
+	if (tab.id === undefined || !hasSessionStorageApi()) return () => {}
+	const tabId = tab.id
+	const storageKey = draftStorageKey(tabId)
+	const handleStorageChange = (
+		changes: Record<string, chrome.storage.StorageChange>,
+	): void => {
+		const draft: unknown = changes[storageKey]?.newValue
+		if (
+			isDraft(draft) &&
+			draft.viewId !== THIS_VIEW_ID &&
+			draft.tabUrl === tab.url
+		) {
+			draftsKnownInStorage.set(tabId, draft)
+			onOtherViewDraft(draft.editedHref)
 		}
 	}
-	chrome.storage.session.onChanged.addListener(listener)
+	chrome.storage.session.onChanged.addListener(handleStorageChange)
 	return () => {
-		chrome.storage.session.onChanged.removeListener(listener)
+		chrome.storage.session.onChanged.removeListener(handleStorageChange)
 	}
 }

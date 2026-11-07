@@ -6,14 +6,14 @@ import { Tooltip } from "./Tooltip.tsx"
 interface IconButtonProps {
 	icon: Component<LucideProps>
 	label: string
-	tip?: string
+	tooltip?: string
 	onClick: () => void
 }
 
 export function IconButton(props: IconButtonProps) {
-	const [mounted, setMounted] = createSignal(false)
+	const [hasMounted, setHasMounted] = createSignal(false)
 	onSettled(() => {
-		setMounted(true)
+		setHasMounted(true)
 	})
 
 	return (
@@ -31,14 +31,14 @@ export function IconButton(props: IconButtonProps) {
 							"grid",
 							{
 								"transition-[opacity,scale] duration-150 ease-out starting:scale-(--enter-scale) starting:opacity-0":
-									mounted(),
+									hasMounted(),
 							},
 						]}>
 						<Icon size={15} strokeWidth={2} aria-hidden="true" />
 					</span>
 				)}
 			</Show>
-			<Tooltip text={props.tip ?? props.label} />
+			<Tooltip text={props.tooltip ?? props.label} />
 		</button>
 	)
 }

@@ -1,85 +1,96 @@
+// Punycode decoding from RFC 3492, which names these parameters.
 const BASE = 36
 const T_MIN = 1
 const T_MAX = 26
 const SKEW = 38
 const DAMP = 700
 const INITIAL_BIAS = 72
-const INITIAL_N = 128
+const FIRST_NON_ASCII_CODE_POINT = 0x80
+const INITIAL_CODE_POINT = FIRST_NON_ASCII_CODE_POINT
 const MAX_CODE_POINT = 0x10_ff_ff
+const ACE_PREFIX = "xn--"
 
-function adapt(delta: number, numPoints: number, first: boolean): number {
-	let d = first ? Math.floor(delta / DAMP) : delta >> 1
-	d += Math.floor(d / numPoints)
-	let k = 0
-	while (d > ((BASE - T_MIN) * T_MAX) >> 1) {
-		d = Math.floor(d / (BASE - T_MIN))
-		k += BASE
+function adaptBias(
+	delta: number,
+	codePointCount: number,
+	isFirstDelta: boolean,
+): number {
+	let scaledDelta = isFirstDelta ? Math.floor(delta / DAMP) : delta >> 1
+	scaledDelta += Math.floor(scaledDelta / codePointCount)
+	let bias = 0
+	while (scaledDelta > ((BASE - T_MIN) * T_MAX) >> 1) {
+		scaledDelta = Math.floor(scaledDelta / (BASE - T_MIN))
+		bias += BASE
 	}
-	return k + Math.floor(((BASE - T_MIN + 1) * d) / (d + SKEW))
+	return bias + Math.floor(((BASE - T_MIN + 1) * scaledDelta) / (scaledDelta + SKEW))
 }
 
-function digitOf(code: number): number {
-	if (code >= 0x30 && code <= 0x39) return code - 22
-	if (code >= 0x41 && code <= 0x5a) return code - 0x41
-	if (code >= 0x61 && code <= 0x7a) return code - 0x61
+/** Letters in either case are 0–25 and digits are 26–35; anything else is BASE. */
+function digitValue(codePoint: number): number {
+	if (codePoint >= 0x30 && codePoint <= 0x39) return codePoint - 0x30 + 26
+	if (codePoint >= 0x41 && codePoint <= 0x5a) return codePoint - 0x41
+	if (codePoint >= 0x61 && codePoint <= 0x7a) return codePoint - 0x61
 	return BASE
 }
 
-function threshold(k: number, bias: number): number {
-	if (k <= bias) return T_MIN
-	if (k >= bias + T_MAX) return T_MAX
-	return k - bias
+function digitThreshold(baseMultiple: number, bias: number): number {
+	if (baseMultiple <= bias) return T_MIN
+	if (baseMultiple >= bias + T_MAX) return T_MAX
+	return baseMultiple - bias
 }
 
-interface Cursor {
-	pos: number
+interface ReadCursor {
+	position: number
 }
 
-function readDelta(input: string, cursor: Cursor, bias: number): number | null {
+function readDelta(encoded: string, cursor: ReadCursor, bias: number): number | null {
 	let delta = 0
 	let weight = 1
-	for (let k = BASE; ; k += BASE) {
-		if (cursor.pos >= input.length) return null
-		const digit = digitOf(input.codePointAt(cursor.pos++) ?? 0)
+	for (let baseMultiple = BASE; ; baseMultiple += BASE) {
+		if (cursor.position >= encoded.length) return null
+		const digit = digitValue(encoded.codePointAt(cursor.position++) ?? 0)
 		if (digit >= BASE) return null
 		delta += digit * weight
-		const t = threshold(k, bias)
-		if (digit < t) return delta
-		weight *= BASE - t
+		const threshold = digitThreshold(baseMultiple, bias)
+		if (digit < threshold) return delta
+		weight *= BASE - threshold
 	}
 }
 
-function decodeLabel(input: string): string | null {
-	const basicEnd = Math.max(input.lastIndexOf("-"), 0)
-	const output = Array.from(input.slice(0, basicEnd), (ch) => ch.codePointAt(0) ?? 0)
-	const cursor: Cursor = { pos: basicEnd > 0 ? basicEnd + 1 : 0 }
-	let n = INITIAL_N
+function decodePunycodeLabel(encoded: string): string | null {
+	const basicLength = Math.max(encoded.lastIndexOf("-"), 0)
+	const codePoints = Array.from(
+		encoded.slice(0, basicLength),
+		(character) => character.codePointAt(0) ?? 0,
+	)
+	const cursor: ReadCursor = { position: basicLength > 0 ? basicLength + 1 : 0 }
+	let codePoint = INITIAL_CODE_POINT
 	let bias = INITIAL_BIAS
-	let i = 0
-	while (cursor.pos < input.length) {
-		const delta = readDelta(input, cursor, bias)
+	let insertIndex = 0
+	while (cursor.position < encoded.length) {
+		const delta = readDelta(encoded, cursor, bias)
 		if (delta === null) return null
-		const length = output.length + 1
-		bias = adapt(delta, length, i === 0)
-		i += delta
-		n += Math.floor(i / length)
-		i %= length
-		if (n > MAX_CODE_POINT) return null
-		output.splice(i++, 0, n)
+		const lengthAfterInsert = codePoints.length + 1
+		bias = adaptBias(delta, lengthAfterInsert, insertIndex === 0)
+		insertIndex += delta
+		codePoint += Math.floor(insertIndex / lengthAfterInsert)
+		insertIndex %= lengthAfterInsert
+		if (codePoint > MAX_CODE_POINT) return null
+		codePoints.splice(insertIndex++, 0, codePoint)
 	}
 	// A valid xn-- label always decodes to something non-ASCII.
-	return output.every((code) => code < INITIAL_N)
+	return codePoints.every((decoded) => decoded < FIRST_NON_ASCII_CODE_POINT)
 		? null
-		: String.fromCodePoint(...output)
+		: String.fromCodePoint(...codePoints)
 }
 
-export function toUnicodeHost(hostname: string): string {
-	if (!hostname.includes("xn--")) return hostname
+export function toUnicodeHostname(hostname: string): string {
+	if (!hostname.includes(ACE_PREFIX)) return hostname
 	return hostname
 		.split(".")
 		.map((label) =>
-			label.toLowerCase().startsWith("xn--")
-				? (decodeLabel(label.slice(4)) ?? label)
+			label.toLowerCase().startsWith(ACE_PREFIX)
+				? (decodePunycodeLabel(label.slice(ACE_PREFIX.length)) ?? label)
 				: label,
 		)
 		.join(".")
