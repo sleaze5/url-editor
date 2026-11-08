@@ -1,0 +1,121 @@
+@custom-variant tips-instant (:root.tips-instant &);
+@custom-variant windowed (:root.windowed &);
+@custom-variant dragging (&:where([data-dragging], [data-dragging] *));
+
+@layer base {
+	:root {
+		color-scheme: dark;
+		-webkit-text-size-adjust: 100%;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	::selection {
+		background-color: var(--color-solid);
+		color: var(--color-on-solid);
+	}
+
+	html {
+		overflow: hidden;
+		background-color: var(--color-canvas);
+	}
+
+	body {
+		width: var(--width-popup);
+		color: var(--color-fg);
+		caret-color: var(--color-fg-bright);
+		font-family: var(--font-sans);
+		font-size: var(--text-sm);
+		line-height: var(--text-sm--line-height);
+		font-synthesis: none;
+		text-rendering: optimizeLegibility;
+		-webkit-font-smoothing: antialiased;
+	}
+
+	:root.windowed body {
+		width: auto;
+	}
+
+	p {
+		text-wrap: pretty;
+	}
+
+	h2 {
+		text-wrap: balance;
+	}
+
+	svg {
+		flex: none;
+	}
+
+	button {
+		touch-action: manipulation;
+	}
+
+	button:not(:disabled),
+	[role="button"]:not([aria-disabled="true"]) {
+		cursor: pointer;
+	}
+
+	button:disabled {
+		opacity: 45%;
+		cursor: not-allowed;
+	}
+
+	:is(button, select, [tabindex="0"]):focus-visible {
+		outline: 1px solid var(--color-focus);
+		outline-offset: 2px;
+	}
+
+	:focus:not(:focus-visible) {
+		outline: none;
+	}
+
+	::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+
+	::-webkit-scrollbar-button {
+		display: none;
+	}
+
+	::-webkit-scrollbar-track,
+	::-webkit-scrollbar-corner {
+		background: transparent;
+	}
+
+	::-webkit-scrollbar-thumb {
+		border: 2px solid transparent;
+		background: var(--color-scrollbar);
+		background-clip: padding-box;
+	}
+
+	@supports not selector(::-webkit-scrollbar) {
+		:root {
+			scrollbar-width: thin;
+			scrollbar-color: var(--color-scrollbar) transparent;
+		}
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--animate-enter: fade 100ms var(--ease-out);
+		--animate-pop: fade 100ms var(--ease-out);
+		--animate-bloom: fade 150ms var(--ease-out);
+		--animate-dialog: fade 150ms var(--ease-out);
+	}
+
+	*,
+	::before,
+	::after,
+	::backdrop {
+		scroll-behavior: auto !important;
+		transition-property: color, background-color, border-color, opacity !important;
+	}
+
+	:active {
+		scale: none !important;
+		translate: none !important;
+	}
+}

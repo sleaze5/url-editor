@@ -1,0 +1,6 @@
+@import "tailwindcss" source(none);
+@source "../popup";
+@source "../components";
+@import "./theme.css";
+@import "./base.css";
+@import "./components.css";

@@ -1,0 +1,216 @@
+@utility label-text {
+	@apply text-2xs font-semibold tracking-wider uppercase;
+}
+
+@utility count {
+	@apply font-mono font-normal tracking-normal tabular-nums;
+
+	&::before {
+		content: "[";
+		content: "[" / "";
+	}
+
+	&::after {
+		content: "]";
+		content: "]" / "";
+	}
+}
+
+@utility button-base {
+	@apply inline-flex h-7 shrink-0 items-center justify-center gap-1.5 border border-line-strong bg-transparent px-3 label-text whitespace-nowrap text-fg;
+	transition-property: color, background-color, border-color, translate;
+	transition-duration: 100ms, 100ms, 100ms, 75ms;
+	transition-timing-function: var(--ease-out);
+
+	&:active:where(:not(:disabled)) {
+		@apply translate-y-px;
+	}
+}
+
+@utility button-primary {
+	@apply button-base border-fg-faint bg-raised text-fg-bright;
+
+	&:hover:where(:not(:disabled)) {
+		@apply border-fg-muted bg-raised-hover;
+	}
+}
+
+@utility button {
+	@apply button-base px-2.5;
+
+	&:hover:where(:not(:disabled)) {
+		@apply border-fg-muted bg-hover;
+	}
+}
+
+@utility button-ghost {
+	@apply button-base size-8 border-0 px-0 text-fg-muted;
+
+	&:hover:where(:not(:disabled)) {
+		@apply bg-hover text-fg;
+	}
+}
+
+@utility button-danger {
+	@apply button-base border-danger text-danger;
+
+	&:hover:where(:not(:disabled)) {
+		@apply bg-danger text-on-solid;
+	}
+}
+
+@utility button-close {
+	@apply grid size-6 shrink-0 place-items-center text-fg-muted transition-colors duration-100 hover:bg-hover hover:text-fg;
+}
+
+@utility chip {
+	@apply inline-flex h-6 shrink-0 items-center gap-1.5 border border-line px-2 label-text whitespace-nowrap text-fg-muted transition-colors duration-100;
+
+	&:hover:where(:not(:disabled)) {
+		@apply border-line-strong text-fg;
+	}
+
+	&[aria-pressed="true"] {
+		@apply border-fg-faint bg-raised text-fg-bright;
+	}
+
+	:where(&) > .count {
+		@apply text-fg-faint;
+	}
+
+	:where(&[aria-pressed="true"]) > .count {
+		@apply text-fg-muted;
+	}
+}
+
+@utility field {
+	@apply h-8 w-full min-w-0 border border-line bg-well px-2 pt-1.5 pb-1 font-mono text-sm text-fg outline-0 transition-colors duration-100 placeholder:text-fg-faint hover:border-line-strong focus:border-fg-bright;
+
+	&[aria-invalid="true"] {
+		@apply border-danger;
+	}
+}
+
+@utility field-label {
+	@apply flex h-4 items-center gap-2 label-text text-fg-muted transition-colors duration-100 select-none group-focus-within/field:text-fg-bright;
+}
+
+@utility section-heading {
+	@apply flex items-center gap-2 label-text text-fg-muted after:h-px after:flex-1 after:bg-line;
+
+	:where(&) > .count {
+		@apply text-fg-faint;
+	}
+}
+
+@utility callout-error {
+	@apply w-max max-w-72 animate-pop border border-danger bg-well px-2 py-1 text-xs text-danger;
+
+	:where(&) kbd {
+		@apply border border-danger px-1 font-mono text-2xs;
+	}
+}
+
+@utility segmented {
+	@apply flex shrink-0 divide-x divide-line-strong border border-line-strong;
+
+	& > button {
+		@apply flex h-6 items-center justify-center gap-1.5 px-2 label-text whitespace-nowrap text-fg-muted transition-colors duration-100 hover:bg-hover hover:text-fg aria-pressed:bg-raised aria-pressed:text-fg-bright;
+	}
+
+	& > [aria-pressed="true"] > .count {
+		@apply text-fg-muted;
+	}
+}
+
+@utility switch {
+	@apply inline-flex h-8 shrink-0 items-center gap-2 px-2 label-text whitespace-nowrap text-fg-muted transition-colors duration-100 hover:bg-hover hover:text-fg aria-checked:text-success;
+
+	& > .track {
+		@apply relative h-4 w-7 border border-line-strong bg-well transition-colors duration-100;
+	}
+
+	& > .track::after {
+		@apply absolute top-0.5 left-0.5 size-2.5 bg-fg-muted;
+		content: "";
+		transition-property: translate, background-color;
+		transition-duration: 100ms;
+		transition-timing-function: var(--ease-out);
+	}
+
+	&[aria-checked="true"] > .track {
+		@apply border-success;
+	}
+
+	&[aria-checked="true"] > .track::after {
+		@apply translate-x-3 bg-success;
+	}
+}
+
+@utility list-row {
+	@apply relative transition-colors duration-100 hover:bg-hover data-selected:bg-active data-selected:hover:bg-hover;
+}
+
+@utility tag {
+	@apply inline-flex h-4 items-center border border-current px-1 font-mono text-2xs font-semibold;
+}
+
+@utility status {
+	@apply inline-flex animate-pop items-center gap-1.5 label-text whitespace-nowrap before:size-1.5 before:bg-current;
+}
+
+@utility tooltip {
+	@apply pointer-events-none absolute top-1/2 z-20 -translate-y-1/2 border border-line-strong bg-well px-2 py-1 font-sans text-2xs font-semibold tracking-wide whitespace-nowrap text-fg-bright uppercase opacity-0 transition-opacity duration-100 ease-out;
+}
+
+@utility panel {
+	@apply flex flex-col border border-line bg-surface;
+
+	:where(&) > header {
+		@apply flex h-8 items-center justify-between gap-2 border-b border-line pr-1 pl-3;
+	}
+
+	:where(&) > header > h3 {
+		@apply flex items-center gap-2 label-text text-fg-muted;
+	}
+
+	:where(&) > header > h3 > .count {
+		@apply text-fg-faint;
+	}
+}
+
+@utility dialog-card {
+	@apply m-auto w-11/12 max-w-md animate-dialog border border-line-strong bg-canvas p-0 text-fg backdrop:animate-fade backdrop:bg-scrim;
+}
+
+@utility dialog-header {
+	@apply flex h-9 items-center justify-between gap-3 border-b border-line bg-surface pr-1.5 pl-3;
+
+	:where(&) h2 {
+		@apply label-text text-fg-bright;
+	}
+}
+
+@utility dialog-body {
+	@apply px-3 py-3 text-sm text-fg-muted;
+}
+
+@utility dialog-actions {
+	@apply flex flex-wrap justify-end gap-2 border-t border-line bg-surface px-3 py-2;
+}
+
+@utility empty-state {
+	@apply m-auto flex max-w-xs animate-enter flex-col items-center justify-center gap-3 p-4 text-center text-fg-muted;
+
+	:where(&) > svg {
+		@apply animate-bloom text-fg-faint;
+	}
+
+	:where(&) > p:first-of-type {
+		@apply label-text text-fg;
+	}
+
+	:where(&) > p + p {
+		@apply text-sm text-balance;
+	}
+}

@@ -1,0 +1,51 @@
+name: Changes
+description: >-
+    Find which jobs the commits since the merge base with the base branch affect, from the files each job reads: `build` for the extension build, `code` for lint and typecheck, and `test` for the tests in `src/` and `scripts/`. Markdown and other prose select nothing, because the format check runs on every change. Any other path, such as a workflow or an action, an empty diff, and `all` select everything. Needs a checkout with history. Keep the `build` paths in step with the cache key in build.yml.
+
+inputs:
+    base:
+        description: The branch to compare with
+        required: true
+    all:
+        description: Select everything without looking at the diff
+        default: "false"
+
+outputs:
+    build:
+        description: Whether a file that the build reads changed
+        value: ${{ steps.changes.outputs.build }}
+    code:
+        description: Whether a file that lint or typecheck reads changed
+        value: ${{ steps.changes.outputs.code }}
+    test:
+        description: Whether a file that the tests read changed
+        value: ${{ steps.changes.outputs.test }}
+
+runs:
+    using: composite
+    steps:
+        - id: changes
+          shell: bash
+          run: |
+              build=false code=false test=false
+              select_all() { build=true code=true test=true; }
+              if [ "$ALL" = true ]; then
+                  files=""
+              else
+                  files=$(git diff --name-only --no-renames "origin/$BASE...HEAD")
+              fi
+              [ -n "$files" ] || select_all
+              while IFS= read -r file; do
+                  case "$file" in
+                      "" | *.md | README | LICENSE | .gitignore | .editorconfig) ;;
+                      src/*) build=true code=true test=true ;;
+                      vite.config.ts) build=true code=true ;;
+                      scripts/*) code=true test=true ;;
+                      .oxlintrc.json) code=true ;;
+                      *) select_all ;;
+                  esac
+              done <<< "$files"
+              printf 'build=%s\ncode=%s\ntest=%s\n' "$build" "$code" "$test" | tee -a "$GITHUB_OUTPUT"
+          env:
+              BASE: ${{ inputs.base }}
+              ALL: ${{ inputs.all }}

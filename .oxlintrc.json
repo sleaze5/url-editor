@@ -1,0 +1,77 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": [
+		"eslint",
+		"typescript",
+		"unicorn",
+		"oxc",
+		"import",
+		"promise",
+		"jsx-a11y"
+	],
+	"categories": {
+		"correctness": "error",
+		"suspicious": "error",
+		"perf": "error",
+		"pedantic": "warn"
+	},
+	"env": { "browser": true, "builtin": true },
+	"options": {
+		"typeAware": true,
+		"typeCheck": true,
+		"denyWarnings": true,
+		"reportUnusedDisableDirectives": "error"
+	},
+	"rules": {
+		"complexity": ["error", { "max": 8 }],
+		"max-depth": ["error", 3],
+		"max-params": ["error", 3],
+		"max-nested-callbacks": ["error", 3],
+		"max-lines-per-function": [
+			"error",
+			{ "max": 60, "skipBlankLines": true, "skipComments": true }
+		],
+		"max-lines": [
+			"error",
+			{ "max": 250, "skipBlankLines": true, "skipComments": true }
+		],
+		"eqeqeq": "error",
+		"no-var": "error",
+		"prefer-const": "error",
+		"no-console": ["error", { "allow": ["warn", "error"] }],
+		"import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+		"import/no-cycle": "error",
+		"import/max-dependencies": ["error", { "max": 15 }],
+		"typescript/prefer-readonly-parameter-types": "off",
+		"typescript/no-explicit-any": "error",
+		"typescript/no-non-null-assertion": "error",
+		"typescript/consistent-type-imports": "error",
+		"typescript/no-floating-promises": "error",
+		"typescript/no-misused-promises": "error",
+		"typescript/await-thenable": "error",
+		"typescript/switch-exhaustiveness-check": "error",
+		"typescript/no-unnecessary-condition": "error",
+		"typescript/strict-boolean-expressions": "off",
+		"jsx-a11y/label-has-associated-control": [
+			"error",
+			{ "assert": "nesting", "controlComponents": ["Field"] }
+		]
+	},
+	"overrides": [
+		{
+			"files": ["src/components/**/*.tsx", "src/popup/**/*.tsx"],
+			"rules": {
+				"max-lines-per-function": "off"
+			}
+		},
+		{
+			"files": ["vite.config.ts", "src/build/**", "scripts/**"],
+			"env": { "browser": false, "node": true }
+		},
+		{
+			"files": ["scripts/**"],
+			"rules": { "no-console": "off" }
+		}
+	],
+	"ignorePatterns": ["dist/**", "node_modules/**"]
+}

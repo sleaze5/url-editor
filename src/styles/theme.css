@@ -1,0 +1,105 @@
+@font-face {
+	font-family: "Geist";
+	src: url("/fonts/Geist-Variable.woff2") format("woff2");
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: block;
+}
+
+@font-face {
+	font-family: "Geist Mono";
+	src: url("/fonts/GeistMono-Variable.woff2") format("woff2");
+	font-weight: 100 900;
+	font-style: normal;
+	font-display: block;
+}
+
+@theme {
+	--color-*: initial;
+	--shadow-*: initial;
+	--text-*: initial;
+
+	--color-well: #101010;
+	--color-canvas: #171717;
+	--color-surface: #1c1c1c;
+	--color-hover: #232323;
+	--color-active: #202020;
+	--color-raised: #2a2a2a;
+	--color-raised-hover: #333333;
+	--color-scrim: rgb(0 0 0 / 70%);
+
+	--color-fg: #ededed;
+	--color-fg-muted: #a8a8a8;
+	--color-fg-faint: #8a8a8a;
+	--color-fg-bright: #ffffff;
+
+	--color-solid: #ffffff;
+	--color-on-solid: #000000;
+
+	--color-line: #313131;
+	--color-line-strong: #4a4a4a;
+	--color-focus: #ffffff;
+	--color-scrollbar: #4a4a4a;
+
+	--color-success: #4ade80;
+	--color-warning: #fbbf24;
+	--color-danger: #f87171;
+
+	--font-sans: "Geist", sans-serif;
+	--font-mono: "Geist Mono", monospace;
+	--font-mono--font-feature-settings: "liga" 0, "calt" 0;
+
+	--text-2xs: 10px;
+	--text-2xs--line-height: 14px;
+	--text-xs: 11px;
+	--text-xs--line-height: 16px;
+	--text-sm: 12px;
+	--text-sm--line-height: 20px;
+
+	--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+
+	--animate-enter: enter 100ms var(--ease-out);
+	--animate-pop: pop 100ms var(--ease-out);
+	--animate-bloom: bloom 150ms var(--ease-out);
+	--animate-dialog: dialog 150ms var(--ease-out);
+	--animate-fade: fade 100ms var(--ease-out);
+
+	@keyframes fade {
+		from {
+			opacity: 0;
+		}
+	}
+
+	@keyframes enter {
+		from {
+			opacity: 0;
+			transform: translateY(2px);
+		}
+	}
+
+	@keyframes pop {
+		from {
+			opacity: 0;
+			transform: scale(0.95);
+		}
+	}
+
+	@keyframes bloom {
+		from {
+			opacity: 0;
+			scale: 0.5;
+		}
+	}
+
+	@keyframes dialog {
+		from {
+			opacity: 0;
+			transform: translateY(2px) scale(0.98);
+		}
+	}
+}
+
+:root {
+	--width-popup: 440px;
+	--height-popup: 520px;
+}

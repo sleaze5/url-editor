@@ -1,0 +1,63 @@
+{
+	"name": "url-editor",
+	"private": true,
+	"version": "1.0.0",
+	"description": "A simple browser extension to parse and edit the current page's URL.",
+	"homepage": "https://github.com/sleaze5/url-editor",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sleaze5/url-editor.git"
+	},
+	"bugs": {
+		"url": "https://github.com/sleaze5/url-editor/issues"
+	},
+	"author": {
+		"name": "sleaze5",
+		"displayName": "sleaze",
+		"url": "https://github.com/sleaze5"
+	},
+	"license": "MIT",
+	"type": "module",
+	"scripts": {
+		"dev": "vite",
+		"dev:chrome": "BROWSER=chrome vite build --watch --mode development",
+		"dev:firefox": "BROWSER=firefox vite build --watch --mode development",
+		"build": "bun run build:chrome && bun run build:firefox",
+		"build:chrome": "BROWSER=chrome vite build --mode production",
+		"build:firefox": "BROWSER=firefox vite build --mode production",
+		"typecheck": "tsc --noEmit",
+		"test": "bun test",
+		"lint": "oxlint --type-aware --type-check --deny-warnings",
+		"lint:fix": "oxlint --type-aware --type-check --deny-warnings --fix",
+		"format": "bun fmt",
+		"format:check": "bun fmt --check",
+		"check": "bun run format:check && bun run lint && bun run typecheck && bun run test",
+		"fix": "bun run lint:fix && bun run format && bun run typecheck",
+		"deps:update": "bun scripts/deps/update.ts && bun install",
+		"ci": "bun run check && bun run build"
+	},
+	"dependencies": {
+		"@lucide/solid": "1.69.0",
+		"@solidjs/web": "2.0.0-rc.21",
+		"solid-js": "2.0.0-rc.21"
+	},
+	"devDependencies": {
+		"@solidjs/vite-plugin": "3.0.0-next.56",
+		"@tailwindcss/vite": "4.3.4",
+		"@types/bun": "1.4.4",
+		"@types/chrome": "0.3.7",
+		"lightningcss": "1.33.0",
+		"oxlint": "1.91.0",
+		"oxlint-tsgolint": "7.0.2006",
+		"tailwindcss": "4.3.4",
+		"typescript": "7.0.2",
+		"vite": "8.3.6"
+	},
+	"devEngines": {
+		"packageManager": {
+			"name": "bun",
+			"version": "1.4.4",
+			"onFail": "download"
+		}
+	}
+}

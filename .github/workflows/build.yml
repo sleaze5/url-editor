@@ -1,0 +1,84 @@
+name: Build
+
+on:
+    workflow_call:
+        inputs:
+            artifact:
+                description: Name of the uploaded artifact with the zipped Chrome and Firefox extensions
+                required: true
+                type: string
+            retention-days:
+                description: Days to keep the artifact
+                default: 7
+                type: number
+        outputs:
+            artifact:
+                description: The name of the uploaded artifact
+                value: ${{ inputs.artifact }}
+            version:
+                description: The version in package.json
+                value: ${{ jobs.build.outputs.version }}
+
+permissions:
+    contents: read
+
+jobs:
+    build:
+        name: Build
+        runs-on: ubuntu-24.04-arm
+        timeout-minutes: 10
+        outputs:
+            version: ${{ steps.meta.outputs.version }}
+        steps:
+            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - id: meta
+              run: |
+                  echo "name=$(jq -r .name package.json)" >> "$GITHUB_OUTPUT"
+                  echo "version=$(jq -r .version package.json)" >> "$GITHUB_OUTPUT"
+
+            - id: cache
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: dist
+                  key: extension-${{ hashFiles('src/**', 'vite.config.ts', 'tsconfig.json', 'package.json', 'bun.lock', 'bunfig.toml', '.github/workflows/build.yml') }}
+
+            - if: steps.cache.outputs.cache-hit != 'true'
+              uses: ./.github/actions/setup-bun
+
+            - if: steps.cache.outputs.cache-hit != 'true'
+              run: bun run build
+
+            - if: steps.cache.outputs.cache-hit != 'true'
+              run: |
+                  changes=$(git status --porcelain)
+                  if [ -n "$changes" ]; then
+                      printf 'The build changed source files.\n%s\n' "$changes" >&2
+                      exit 1
+                  fi
+
+            - if: steps.cache.outputs.cache-hit != 'true'
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: dist
+                  key: ${{ steps.cache.outputs.cache-primary-key }}
+
+            - name: Package
+              run: |
+                  package="$RUNNER_TEMP/package"
+                  mkdir -p "$package"
+                  for browser in chrome firefox; do
+                      (cd "dist/$NAME-$browser" && zip -qrX "$package/$NAME-$browser-v$VERSION.zip" .)
+                  done
+              env:
+                  NAME: ${{ steps.meta.outputs.name }}
+                  VERSION: ${{ steps.meta.outputs.version }}
+
+            - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+              with:
+                  name: ${{ inputs.artifact }}
+                  path: ${{ runner.temp }}/package
+                  if-no-files-found: error
+                  retention-days: ${{ inputs.retention-days }}
