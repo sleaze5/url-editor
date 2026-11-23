@@ -37,9 +37,9 @@
 		"ci": "bun run check && bun run build"
 	},
 	"dependencies": {
-		"@lucide/solid": "1.70.0",
-		"@solidjs/web": "2.0.0-rc.21",
-		"solid-js": "2.0.0-rc.21"
+		"@lucide/solid": "1.73.0",
+		"@solidjs/web": "2.0.0-rc.22",
+		"solid-js": "2.0.0-rc.22"
 	},
 	"devDependencies": {
 		"@solidjs/vite-plugin": "3.0.0-next.57",
@@ -47,11 +47,11 @@
 		"@types/bun": "1.4.4",
 		"@types/chrome": "0.3.7",
 		"lightningcss": "1.33.0",
-		"oxlint": "1.93.0",
-		"oxlint-tsgolint": "7.0.2006",
+		"oxlint": "1.94.0",
+		"oxlint-tsgolint": "7.0.2007",
 		"tailwindcss": "4.3.5",
 		"typescript": "7.0.2",
-		"vite": "8.3.7"
+		"vite": "8.3.8"
 	},
 	"devEngines": {
 		"packageManager": {
